@@ -77,12 +77,24 @@ class PluginRegistry:
         instances: list[SourcePlugin] = []
         for cls in self._classes:
             source_cfg = self.config.source_config(cls.name)
-            if not self.config.is_source_enabled(cls.name, default=True):
+            has_key = bool(source_cfg.get("api_key"))
+            explicitly_enabled = "enabled" in source_cfg
+
+            # A key-gated source with no key configured defaults to *disabled*
+            # (silent skip) rather than warning on every run -- most users
+            # won't have every optional API key set up. If the user explicitly
+            # opts in (enabled: true) without a key, that's worth a warning.
+            default_enabled = has_key if cls.requires_api_key else True
+            if not self.config.is_source_enabled(cls.name, default=default_enabled):
                 log.debug("source disabled by config: %s", cls.name)
                 continue
+
             plugin = cls(source_cfg, self.http)
             if not plugin.is_configured():
-                log.warning("skipping %s: requires an API key (set sources.%s.api_key)", cls.name, cls.name)
+                if cls.requires_api_key and not explicitly_enabled:
+                    log.debug("skipping %s: no API key configured (sources.%s.api_key)", cls.name, cls.name)
+                else:
+                    log.warning("skipping %s: requires an API key (set sources.%s.api_key)", cls.name, cls.name)
                 continue
             instances.append(plugin)
         return instances
