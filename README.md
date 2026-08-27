@@ -1,41 +1,47 @@
-# n1xYosint
+<h1 align="center">n1xYosint</h1>
 
-A modular, CLI-first OSINT reconnaissance framework for **username and email
-intelligence gathering**, built for Kali Linux. Python 3 + asyncio/aiohttp.
+<p align="center">
+  Async, plugin-based OSINT reconnaissance for usernames and email addresses.
+</p>
 
-> **Scope & ethics.** This framework only collects information that is
-> publicly accessible, or accessible through a legitimate, licensed
-> third-party API (e.g. HaveIBeenPwned, GitHub/GitLab public APIs). It does
-> not bypass authentication, defeat access controls, exploit vulnerabilities,
-> or access private/non-public accounts or data. Use it only against targets
-> you are authorized to investigate (your own identities, engagements you
-> have written authorization for, CTFs, etc.), and always comply with each
-> queried service's terms of service and applicable law.
+<p align="center">
+  <img alt="License" src="https://img.shields.io/github/license/n11xY/n1xYos1nt">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-blue">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Kali%20Linux-557C94">
+</p>
 
-## Architecture
+Point it at a username or email and it fans out across dozens of platforms
+and APIs concurrently, correlates whatever it finds back into linked
+identities, scores each result by how confident it actually is, and hands
+you a report — terminal, JSON, CSV, or TXT.
 
-```
-CLI (cli.py)
-  -> input normalization/validation (core/normalize.py)
-  -> Engine (core/engine.py)
-       -> PluginRegistry (plugins/registry.py)     discovers + instantiates source modules
-       -> AsyncHttpClient (core/http_client.py)    async requests, retries, rate limits, proxy, cache
-       -> ResponseCache (core/cache.py)            sqlite response cache
-       -> N source plugins (plugins/sources/*.py)  one module per OSINT source, common interface
-       -> dedup + confidence scoring (core/scoring.py)
-       -> entity correlation (core/correlation.py)
-  -> terminal renderer (output/renderer.py)
-  -> exporters: JSON / CSV / TXT (output/exporters.py)
-```
+Every result is either **confirmed** (an official API said so) or
+**probable** (a page-content heuristic said so) — the two are never mixed
+together silently, so you always know how much to trust a hit.
 
-Every finding keeps its `source_url` (the exact endpoint/page it came from),
-a `MatchStatus` (`confirmed` / `probable` / `uncertain` / `not_found` /
-`error`), and a computed `confidence` score, so results stay auditable.
+## Features
 
-## Install (Kali Linux)
+- 41-site username enumeration database (GitHub, Reddit, Instagram, Steam, YouTube, Twitch, ...) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Twitch, and Steam
+- Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar
+- Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
+- Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
+- Async engine with configurable concurrency, retries, per-source rate limiting, SQLite response caching, and proxy support (HTTP or SOCKS5/Tor)
+- Plugin architecture — drop a file in `plugins/sources/`, no core changes needed
+- JSON / CSV / TXT export, evidence capture, full source attribution on every finding
+
+## Scope
+
+Everything here reads publicly accessible pages or calls a legitimate,
+documented third-party API. No auth bypass, no exploiting access controls,
+no touching private data. Use it only against targets you're authorized to
+investigate — your own accounts, an engagement you have written
+authorization for, a CTF — and respect each service's terms of use.
+
+## Install
 
 ```bash
-git clone <this-repo> n1xYosint && cd n1xYosint
+git clone https://github.com/n11xY/n1xYos1nt.git
+cd n1xYos1nt
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
@@ -44,56 +50,44 @@ pip install -e .
 ## Usage
 
 ```bash
-# Ad-hoc targets
-n1xyosint -u johndoe -u j.doe -e john@example.com
+n1xyosint -u johndoe -e john@example.com
 
-# From a file (one identifier per line, '#' comments allowed)
+# from a file, one identifier per line
 n1xyosint -f targets.txt --export json:report.json --export csv:report.csv
 
-# Interactive mode
+# interactive prompt
 n1xyosint --interactive
 
-# Custom config, evidence capture, verbose logging, Tor proxy
+# custom config, save raw evidence, verbose, route through Tor
 n1xyosint -u johndoe -c config/config.yaml --save-evidence -vv \
   --proxy socks5h://127.0.0.1:9050
 ```
 
 Copy [`config/config.example.yaml`](config/config.example.yaml) to
-`config/config.yaml` and fill in API keys for the sources that need one
-(HaveIBeenPwned is required for the `hibp` module; a Bing Web Search key is
-required for the optional `search_api` module). Keys can also be supplied
-via environment variables: `OSINTRECON_<SOURCE>_API_KEY` (e.g.
-`OSINTRECON_HIBP_API_KEY`).
+`config/config.yaml` to enable the API-key-gated modules below (or set keys
+via `OSINTRECON_<SOURCE>_API_KEY` env vars). Everything else works with zero
+configuration.
 
-## Built-in source modules
+## Source modules
 
-| Module             | Category          | Identifier | Auth required |
-|---------------------|-------------------|------------|----------------|
-| `username_sites`    | social/various (41-site database) | username   | no (`config/sites.json`) |
-| `github`            | code-hosting       | username   | no (optional PAT raises rate limit) |
-| `gitlab`            | code-hosting       | username   | no |
-| `roblox`            | social             | username   | no |
-| `minecraft`         | social             | username   | no |
-| `gravatar`          | profile-directory  | email      | no |
-| `pastebin_search`   | paste              | both       | no |
-| `xposedornot`       | breach             | email      | no -- genuinely free HIBP alternative (HIBP's API is paid-only) |
-| `emailrep`          | breach             | email      | no (optional key raises rate limit) |
-| `hibp`              | breach + paste     | email      | **yes** (paid, ~$4.39/mo) -- CONFIRMED, most complete breach database |
-| `twitch_api`        | social             | username   | **yes** (free Twitch client id/secret) -- CONFIRMED, upgrades the heuristic `username_sites:Twitch` check |
-| `steam_api`         | social             | username   | **yes** (free Steam Web API key) -- CONFIRMED, upgrades the heuristic `username_sites:Steam` check |
-| `hunter_io`         | profile-directory  | email      | **yes** (free-tier Hunter.io key) -- verifies deliverability |
-| `search_api`        | search-engine      | both       | **yes** (licensed web search API key; disabled by default) |
-| `twitter_api`       | social             | username   | **yes** (X API v2 developer token; disabled by default -- paid tier) |
+| Module | Category | Identifier | Notes |
+|---|---|---|---|
+| `username_sites` | social/various | username | 41-site database, `config/sites.json` |
+| `github` / `gitlab` | code-hosting | username | official public APIs |
+| `roblox` / `minecraft` | social | username | official public APIs |
+| `gravatar` | profile-directory | email | |
+| `pastebin_search` | paste | both | |
+| `xposedornot` | breach | email | free, no key |
+| `emailrep` | breach | email | free, optional key for higher rate limit |
+| `hibp` | breach + paste | email | key required, paid (~$4.39/mo) |
+| `twitch_api` / `steam_api` | social | username | key required (free), upgrades the heuristic site check to a confirmed API result |
+| `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
+| `search_api` | search-engine | both | key required, disabled by default |
+| `twitter_api` | social | username | key required, disabled by default (paid API tier) |
 
-Credential-gated modules are skipped silently when unconfigured -- no need
-to disable them by hand. Adding a key upgrades matching from a best-effort
-HTML heuristic (`probable`, ~0.70 confidence) to an official-API result
-(`confirmed`, ~0.95 confidence).
+Key-gated modules are skipped silently when unconfigured.
 
-## Writing a new plugin
-
-Drop a module into `osintrecon/plugins/sources/` (or point `plugins_dir` in
-config at an external directory) that subclasses `SourcePlugin`:
+## Writing a plugin
 
 ```python
 from osintrecon.plugins.base import SourcePlugin
@@ -114,7 +108,8 @@ class MyPlugin(SourcePlugin):
         )]
 ```
 
-No changes to the core engine are needed -- the registry auto-discovers it.
+Drop the file in `osintrecon/plugins/sources/` (or point `plugins_dir` in
+config at an external directory) — the registry picks it up automatically.
 
 ## Tests
 
@@ -125,8 +120,5 @@ pytest
 
 ## License
 
-Copyright (C) 2026 n11xY. Licensed under the GNU General Public License v3.0
-or later -- see [LICENSE](LICENSE). This means anyone can use, study, and
-modify this code, but any distributed copy or derivative work must also stay
-under GPLv3 and keep its source available; it cannot be relicensed into a
-closed-source product.
+GPLv3 — see [LICENSE](LICENSE). Use it, modify it, ship it, just keep it
+open under the same terms.
