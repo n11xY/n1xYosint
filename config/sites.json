@@ -18,5 +18,10 @@
   {"name": "Keybase", "category": "profile-directory", "url": "https://keybase.io/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "About.me", "category": "profile-directory", "url": "https://about.me/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Gravatar", "category": "profile-directory", "url": "https://en.gravatar.com/{}", "check": "message", "not_found_text": "Sorry, we could not find"},
-  {"name": "Telegram", "category": "social", "url": "https://t.me/{}", "check": "message", "not_found_text": "If you have Telegram, you can contact"}
+  {"name": "Telegram", "category": "social", "url": "https://t.me/{}", "check": "message", "not_found_text": "If you have Telegram, you can contact"},
+  {"name": "YouTube", "category": "social", "url": "https://www.youtube.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Codeberg", "category": "code-hosting", "url": "https://codeberg.org/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Kaggle", "category": "profile-directory", "url": "https://www.kaggle.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Product Hunt", "category": "profile-directory", "url": "https://www.producthunt.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Letterboxd", "category": "social", "url": "https://letterboxd.com/{}/", "check": "status", "found_status": 200, "not_found_status": 404}
 ]
