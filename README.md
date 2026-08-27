@@ -69,9 +69,11 @@ via environment variables: `OSINTRECON_<SOURCE>_API_KEY` (e.g.
 
 | Module             | Category          | Identifier | Auth required |
 |---------------------|-------------------|------------|----------------|
-| `username_sites`    | social/various     | username   | no (site database in `config/sites.json`) |
+| `username_sites`    | social/various (41-site database) | username   | no (`config/sites.json`) |
 | `github`            | code-hosting       | username   | no (optional PAT raises rate limit) |
 | `gitlab`            | code-hosting       | username   | no |
+| `roblox`            | social             | username   | no |
+| `minecraft`         | social             | username   | no |
 | `gravatar`          | profile-directory  | email      | no |
 | `pastebin_search`   | paste              | both       | no |
 | `hibp`              | breach             | email      | **yes** (HIBP API key) |

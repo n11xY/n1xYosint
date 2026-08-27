@@ -33,5 +33,11 @@
   {"name": "itch.io", "category": "social", "url": "https://{}.itch.io", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "HackerOne", "category": "profile-directory", "url": "https://hackerone.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Chess.com", "category": "social", "url": "https://www.chess.com/member/{}", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Threads", "category": "social", "url": "https://www.threads.net/@{}", "check": "message", "not_found_text": "Sorry, this page isn't available."}
+  {"name": "Threads", "category": "social", "url": "https://www.threads.net/@{}", "check": "message", "not_found_text": "Sorry, this page isn't available."},
+  {"name": "Bitbucket", "category": "code-hosting", "url": "https://bitbucket.org/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "SourceForge", "category": "code-hosting", "url": "https://sourceforge.net/u/{}/profile/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "osu!", "category": "social", "url": "https://osu.ppy.sh/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "WordPress", "category": "social", "url": "https://{}.wordpress.com", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Blogspot", "category": "social", "url": "https://{}.blogspot.com", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Untappd", "category": "social", "url": "https://untappd.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404}
 ]
