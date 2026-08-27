@@ -55,9 +55,32 @@ sources:
     enabled: true
     api_key: null               # required: get one at https://haveibeenpwned.com/API/Key
                                  # (or set env var OSINTRECON_HIBP_API_KEY)
+                                 # covers both breach exposure and paste exposure
 
   search_api:
     enabled: false               # disabled by default: requires a paid Bing Web Search API key
     provider: bing
     api_key: null                # or env var OSINTRECON_SEARCH_API_API_KEY
     results_per_query: 10
+
+  # -- Credential-gated sources that upgrade a heuristic HTML check into a
+  # -- definitive (CONFIRMED) official-API result. All are free to sign up
+  # -- for and, except twitter_api, work fine on the free tier.
+  # -- Left unconfigured, they're skipped silently -- no need to disable them.
+
+  twitch_api:
+    client_id: null              # https://dev.twitch.tv/console/apps (free)
+    client_secret: null
+
+  steam_api:
+    api_key: null                # https://steamcommunity.com/dev/apikey (free)
+
+  hunter_io:
+    api_key: null                # https://hunter.io/api-keys (free tier available)
+
+  emailrep:
+    api_key: null                # optional: https://emailrep.io/key -- works unauthenticated too
+
+  twitter_api:
+    enabled: false                # disabled by default: X API v2 access requires a paid developer tier
+    bearer_token: null            # https://developer.x.com

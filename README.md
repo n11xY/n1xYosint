@@ -76,8 +76,18 @@ via environment variables: `OSINTRECON_<SOURCE>_API_KEY` (e.g.
 | `minecraft`         | social             | username   | no |
 | `gravatar`          | profile-directory  | email      | no |
 | `pastebin_search`   | paste              | both       | no |
-| `hibp`              | breach             | email      | **yes** (HIBP API key) |
+| `emailrep`          | breach             | email      | no (optional key raises rate limit) |
+| `hibp`              | breach + paste     | email      | **yes** (free HIBP API key) -- CONFIRMED, replaces heuristic guessing |
+| `twitch_api`        | social             | username   | **yes** (free Twitch client id/secret) -- CONFIRMED, upgrades the heuristic `username_sites:Twitch` check |
+| `steam_api`         | social             | username   | **yes** (free Steam Web API key) -- CONFIRMED, upgrades the heuristic `username_sites:Steam` check |
+| `hunter_io`         | profile-directory  | email      | **yes** (free-tier Hunter.io key) -- verifies deliverability |
 | `search_api`        | search-engine      | both       | **yes** (licensed web search API key; disabled by default) |
+| `twitter_api`       | social             | username   | **yes** (X API v2 developer token; disabled by default -- paid tier) |
+
+Credential-gated modules are skipped silently when unconfigured -- no need
+to disable them by hand. Adding a key upgrades matching from a best-effort
+HTML heuristic (`probable`, ~0.70 confidence) to an official-API result
+(`confirmed`, ~0.95 confidence).
 
 ## Writing a new plugin
 
