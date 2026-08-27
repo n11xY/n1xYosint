@@ -51,11 +51,15 @@ sources:
   pastebin_search:
     enabled: true
 
+  xposedornot:
+    enabled: true               # free, no key needed -- HIBP alternative (breach exposure only)
+
   hibp:
     enabled: true
-    api_key: null               # required: get one at https://haveibeenpwned.com/API/Key
+    api_key: null               # paid (~$4.39/mo): https://haveibeenpwned.com/API/Key
                                  # (or set env var OSINTRECON_HIBP_API_KEY)
-                                 # covers both breach exposure and paste exposure
+                                 # covers both breach exposure and paste exposure;
+                                 # more complete than xposedornot but not free
 
   search_api:
     enabled: false               # disabled by default: requires a paid Bing Web Search API key

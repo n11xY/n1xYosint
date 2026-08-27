@@ -76,8 +76,9 @@ via environment variables: `OSINTRECON_<SOURCE>_API_KEY` (e.g.
 | `minecraft`         | social             | username   | no |
 | `gravatar`          | profile-directory  | email      | no |
 | `pastebin_search`   | paste              | both       | no |
+| `xposedornot`       | breach             | email      | no -- genuinely free HIBP alternative (HIBP's API is paid-only) |
 | `emailrep`          | breach             | email      | no (optional key raises rate limit) |
-| `hibp`              | breach + paste     | email      | **yes** (free HIBP API key) -- CONFIRMED, replaces heuristic guessing |
+| `hibp`              | breach + paste     | email      | **yes** (paid, ~$4.39/mo) -- CONFIRMED, most complete breach database |
 | `twitch_api`        | social             | username   | **yes** (free Twitch client id/secret) -- CONFIRMED, upgrades the heuristic `username_sites:Twitch` check |
 | `steam_api`         | social             | username   | **yes** (free Steam Web API key) -- CONFIRMED, upgrades the heuristic `username_sites:Steam` check |
 | `hunter_io`         | profile-directory  | email      | **yes** (free-tier Hunter.io key) -- verifies deliverability |

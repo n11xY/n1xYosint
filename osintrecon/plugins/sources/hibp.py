@@ -1,8 +1,10 @@
-"""HaveIBeenPwned source module -- queries the legitimate, paid HIBP v3 API
-for breach and paste exposure of an email address. Requires an API key
-(config: sources.hibp.api_key or env OSINTRECON_HIBP_API_KEY), per HIBP's
-terms of service. This module never attempts to access breach data through
-any unofficial or unauthorized channel.
+"""HaveIBeenPwned source module -- queries the legitimate, paid (~$4.39/mo)
+HIBP v3 API for breach and paste exposure of an email address. Requires an
+API key (config: sources.hibp.api_key or env OSINTRECON_HIBP_API_KEY), per
+HIBP's terms of service. This module never attempts to access breach data
+through any unofficial or unauthorized channel.
+
+For a free alternative with no subscription, see xposedornot.py.
 """
 from __future__ import annotations
 
