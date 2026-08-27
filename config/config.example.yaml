@@ -1,0 +1,63 @@
+# n1xYosint example configuration.
+# Copy to config.yaml and edit, or pass --config /path/to/this/file.
+
+concurrency: 20               # max overall concurrent in-flight requests
+timeout_seconds: 10
+retries: 2
+retry_backoff: 1.5            # exponential backoff multiplier between retries
+rate_limit_per_source: 5      # max concurrent requests to any single source module
+
+user_agent: "n1xYosint/0.1 (+authorized OSINT research)"
+
+# Route all traffic through a proxy. Examples:
+#   proxy: "http://127.0.0.1:8080"       # HTTP/HTTPS proxy (e.g. Burp)
+#   proxy: "socks5h://127.0.0.1:9050"    # Tor (requires: sudo apt install tor && systemctl start tor)
+proxy: null
+
+headers: {}
+  # X-Custom-Header: "value"
+
+cache:
+  enabled: true
+  path: "~/.cache/n1xYosint/cache.sqlite3"
+  ttl_seconds: 86400           # 24h
+
+evidence:
+  save_raw: false              # set true (or --save-evidence) to persist raw responses
+  path: "~/.local/share/n1xYosint/evidence"
+
+logging:
+  level: INFO
+  file: null                   # e.g. "~/.local/share/n1xYosint/run.log"
+
+# Extra directory to load third-party/custom plugin modules from.
+plugins_dir: null
+
+sources:
+  username_sites:
+    enabled: true
+    sites_db: null            # defaults to config/sites.json bundled with the framework
+
+  github:
+    enabled: true
+    api_key: null              # optional GitHub PAT, raises API rate limit (not required)
+
+  gitlab:
+    enabled: true
+
+  gravatar:
+    enabled: true
+
+  pastebin_search:
+    enabled: true
+
+  hibp:
+    enabled: true
+    api_key: null               # required: get one at https://haveibeenpwned.com/API/Key
+                                 # (or set env var OSINTRECON_HIBP_API_KEY)
+
+  search_api:
+    enabled: false               # disabled by default: requires a paid Bing Web Search API key
+    provider: bing
+    api_key: null                # or env var OSINTRECON_SEARCH_API_API_KEY
+    results_per_query: 10

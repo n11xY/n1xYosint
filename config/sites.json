@@ -1,0 +1,22 @@
+[
+  {"name": "GitHub", "category": "code-hosting", "url": "https://github.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "GitLab", "category": "code-hosting", "url": "https://gitlab.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Docker Hub", "category": "code-hosting", "url": "https://hub.docker.com/u/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "npm", "category": "code-hosting", "url": "https://www.npmjs.com/~{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "PyPI", "category": "code-hosting", "url": "https://pypi.org/user/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Reddit", "category": "forum", "url": "https://www.reddit.com/user/{}/about.json", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "HackerNews", "category": "forum", "url": "https://news.ycombinator.com/user?id={}", "check": "message", "not_found_text": "No such user."},
+  {"name": "DevTo", "category": "forum", "url": "https://dev.to/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Medium", "category": "social", "url": "https://medium.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Instagram", "category": "social", "url": "https://www.instagram.com/{}/", "check": "message", "not_found_text": "Sorry, this page isn't available."},
+  {"name": "TikTok", "category": "social", "url": "https://www.tiktok.com/@{}", "check": "message", "not_found_text": "Couldn't find this account"},
+  {"name": "Pinterest", "category": "social", "url": "https://www.pinterest.com/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Twitch", "category": "social", "url": "https://www.twitch.tv/{}", "check": "message", "not_found_text": "sorry_train"},
+  {"name": "SoundCloud", "category": "social", "url": "https://soundcloud.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Vimeo", "category": "social", "url": "https://vimeo.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Steam", "category": "social", "url": "https://steamcommunity.com/id/{}", "check": "message", "not_found_text": "The specified profile could not be found"},
+  {"name": "Keybase", "category": "profile-directory", "url": "https://keybase.io/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "About.me", "category": "profile-directory", "url": "https://about.me/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Gravatar", "category": "profile-directory", "url": "https://en.gravatar.com/{}", "check": "message", "not_found_text": "Sorry, we could not find"},
+  {"name": "Telegram", "category": "social", "url": "https://t.me/{}", "check": "message", "not_found_text": "If you have Telegram, you can contact"}
+]
