@@ -1,7 +1,9 @@
 """Minecraft (Mojang) source module -- uses the public, unauthenticated Mojang
 API to resolve a Minecraft username to its account UUID. Returns HTTP 200
-with a JSON body when the username exists, and HTTP 204 (No Content) when it
-doesn't -- no API key required.
+with a JSON body when the username exists. The "not found" status has varied
+across API revisions (204 No Content historically, 404 Not Found observed in
+practice) so both are treated as a clean not-found result -- no API key
+required.
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ class MinecraftPlugin(SourcePlugin):
 
     async def run(self, identifier: Identifier) -> list[Finding]:
         url = API_URL.format(identifier.value)
-        resp = await self.http.get(self.name, url, expected_statuses={204})
+        resp = await self.http.get(self.name, url, expected_statuses={204, 404})
 
         if resp.error is not None:
             return [Finding(
@@ -29,7 +31,7 @@ class MinecraftPlugin(SourcePlugin):
                 source_url=url, title="Mojang API request failed", category=self.category,
                 metadata={"error": resp.error},
             )]
-        if resp.status == 204:
+        if resp.status in (204, 404):
             return []
         if resp.status != 200:
             return [Finding(
