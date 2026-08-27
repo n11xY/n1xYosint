@@ -122,3 +122,11 @@ No changes to the core engine are needed -- the registry auto-discovers it.
 pip install -e ".[dev]"
 pytest
 ```
+
+## License
+
+Copyright (C) 2026 n11xY. Licensed under the GNU General Public License v3.0
+or later -- see [LICENSE](LICENSE). This means anyone can use, study, and
+modify this code, but any distributed copy or derivative work must also stay
+under GPLv3 and keep its source available; it cannot be relicensed into a
+closed-source product.
