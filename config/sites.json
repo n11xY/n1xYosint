@@ -23,5 +23,15 @@
   {"name": "Codeberg", "category": "code-hosting", "url": "https://codeberg.org/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Kaggle", "category": "profile-directory", "url": "https://www.kaggle.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Product Hunt", "category": "profile-directory", "url": "https://www.producthunt.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Letterboxd", "category": "social", "url": "https://letterboxd.com/{}/", "check": "status", "found_status": 200, "not_found_status": 404}
+  {"name": "Letterboxd", "category": "social", "url": "https://letterboxd.com/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Behance", "category": "social", "url": "https://www.behance.net/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Dribbble", "category": "social", "url": "https://dribbble.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Last.fm", "category": "social", "url": "https://www.last.fm/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Discogs", "category": "social", "url": "https://www.discogs.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "CodePen", "category": "code-hosting", "url": "https://codepen.io/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Replit", "category": "code-hosting", "url": "https://replit.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "itch.io", "category": "social", "url": "https://{}.itch.io", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "HackerOne", "category": "profile-directory", "url": "https://hackerone.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Chess.com", "category": "social", "url": "https://www.chess.com/member/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Threads", "category": "social", "url": "https://www.threads.net/@{}", "check": "message", "not_found_text": "Sorry, this page isn't available."}
 ]
