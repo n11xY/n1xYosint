@@ -10,7 +10,7 @@ from typing import ClassVar
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
-SEARCH_URL = "https://psbdmp.ws/api/v3/search/{}"
+SEARCH_URL = "https://psbdmp.ws/api/search/v3/{}"
 
 
 class PastebinSearchPlugin(SourcePlugin):
