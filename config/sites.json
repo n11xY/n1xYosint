@@ -39,5 +39,17 @@
   {"name": "osu!", "category": "social", "url": "https://osu.ppy.sh/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "WordPress", "category": "social", "url": "https://{}.wordpress.com", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Blogspot", "category": "social", "url": "https://{}.blogspot.com", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Untappd", "category": "social", "url": "https://untappd.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404}
+  {"name": "Untappd", "category": "social", "url": "https://untappd.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "DeviantArt", "category": "social", "url": "https://www.deviantart.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Wattpad", "category": "social", "url": "https://www.wattpad.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "AO3", "category": "social", "url": "https://archiveofourown.org/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Imgur", "category": "social", "url": "https://imgur.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "500px", "category": "social", "url": "https://500px.com/p/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "ArtStation", "category": "social", "url": "https://www.artstation.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Mastodon", "category": "social", "url": "https://mastodon.social/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Newgrounds", "category": "social", "url": "https://{}.newgrounds.com", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "crates.io", "category": "code-hosting", "url": "https://crates.io/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "RubyGems", "category": "code-hosting", "url": "https://rubygems.org/profiles/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Packagist", "category": "code-hosting", "url": "https://packagist.org/users/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "TryHackMe", "category": "profile-directory", "url": "https://tryhackme.com/p/{}", "check": "status", "found_status": 200, "not_found_status": 404}
 ]
