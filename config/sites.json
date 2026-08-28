@@ -51,5 +51,22 @@
   {"name": "crates.io", "category": "code-hosting", "url": "https://crates.io/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "RubyGems", "category": "code-hosting", "url": "https://rubygems.org/profiles/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Packagist", "category": "code-hosting", "url": "https://packagist.org/users/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "TryHackMe", "category": "profile-directory", "url": "https://tryhackme.com/p/{}", "check": "status", "found_status": 200, "not_found_status": 404}
+  {"name": "TryHackMe", "category": "profile-directory", "url": "https://tryhackme.com/p/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Tumblr", "category": "social", "url": "https://{}.tumblr.com", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Flickr", "category": "social", "url": "https://www.flickr.com/people/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "VSCO", "category": "social", "url": "https://vsco.co/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Linktree", "category": "profile-directory", "url": "https://linktr.ee/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Carrd", "category": "profile-directory", "url": "https://{}.carrd.co", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Venmo", "category": "profile-directory", "url": "https://venmo.com/u/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "CashApp", "category": "profile-directory", "url": "https://cash.app/${}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "PayPal.me", "category": "profile-directory", "url": "https://paypal.me/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Bandcamp", "category": "social", "url": "https://{}.bandcamp.com", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Mixcloud", "category": "social", "url": "https://www.mixcloud.com/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Substack", "category": "social", "url": "https://{}.substack.com", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Trakt", "category": "social", "url": "https://trakt.tv/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "MyAnimeList", "category": "social", "url": "https://myanimelist.net/profile/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "IndieHackers", "category": "profile-directory", "url": "https://www.indiehackers.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Hashnode", "category": "forum", "url": "https://hashnode.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Buy Me a Coffee", "category": "profile-directory", "url": "https://www.buymeacoffee.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Kik", "category": "social", "url": "https://kik.me/{}", "check": "status", "found_status": 200, "not_found_status": 404}
 ]
