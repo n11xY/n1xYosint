@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img alt="License" src="https://img.shields.io/github/license/n11xY/n1xYos1nt">
+  <img alt="License" src="https://img.shields.io/github/license/n11xY/n1xYosint">
   <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-blue">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Kali%20Linux-557C94">
 </p>
@@ -21,7 +21,7 @@ together silently, so you always know how much to trust a hit.
 
 ## Features
 
-- 70-site username enumeration database (GitHub, Reddit, Instagram, Steam, YouTube, Twitch, ...) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, Twitch, and Steam
+- 62-site username enumeration database (GitHub, Reddit, Instagram, Steam, YouTube, Twitch, ...) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
 - Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
@@ -40,8 +40,8 @@ authorization for, a CTF — and respect each service's terms of use.
 ## Install
 
 ```bash
-git clone https://github.com/n11xY/n1xYos1nt.git
-cd n1xYos1nt
+git clone https://github.com/n11xY/n1xYosint.git
+cd n1xYosint
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
@@ -72,7 +72,7 @@ configuration.
 
 | Module | Category | Identifier | Notes |
 |---|---|---|---|
-| `username_sites` | social/various | username | 70-site database, `config/sites.json` |
+| `username_sites` | social/various | username | 62-site database, `config/sites.json` |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
 | `roblox` / `minecraft` / `bluesky` | social | username | official public APIs |
 | `gravatar` | profile-directory | email | |
