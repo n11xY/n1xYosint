@@ -18,6 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+holehe = ["holehe", "httpx"]
 
 [project.scripts]
 n1xyosint = "osintrecon.cli:main"

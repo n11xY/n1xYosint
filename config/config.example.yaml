@@ -88,3 +88,8 @@ sources:
   twitter_api:
     enabled: false                # disabled by default: X API v2 access requires a paid developer tier
     bearer_token: null            # https://developer.x.com
+
+  # "Configured" here means the optional packages are installed:
+  # pip install -e ".[holehe]" (or: pip install holehe httpx)
+  # Not installed -> skipped silently, same as any unconfigured source.
+  holehe: {}

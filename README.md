@@ -22,7 +22,7 @@ together silently, so you always know how much to trust a hit.
 ## Features
 
 - 62-site username enumeration database (GitHub, Reddit, Instagram, Steam, YouTube, Twitch, ...) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, Twitch, and Steam
-- Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar
+- Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
 - Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
 - Async engine with configurable concurrency, retries, per-source rate limiting, SQLite response caching, and proxy support (HTTP or SOCKS5/Tor)
@@ -84,6 +84,7 @@ configuration.
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
 | `search_api` | search-engine | both | key required, disabled by default |
 | `twitter_api` | social | username | key required, disabled by default (paid API tier) |
+| `holehe` | social | email | optional: `pip install -e ".[holehe]"` — bridges to the [holehe](https://github.com/megadose/holehe) project for registration checks across 120+ sites |
 
 Key-gated modules are skipped silently when unconfigured.
 
