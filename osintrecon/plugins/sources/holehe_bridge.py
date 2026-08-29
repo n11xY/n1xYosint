@@ -66,6 +66,27 @@ async def _run_one(func: Callable, email: str, client: Any, out: list[dict]) -> 
         log.debug("holehe module %s raised: %s", getattr(func, "__name__", "?"), exc)
 
 
+def _summarize_extras(result: dict) -> str:
+    """The password-reset/signup flow this technique relies on almost never
+    reveals a username -- sites don't leak account details through it, only
+    a yes/no existence signal. A few holehe modules do capture incidental
+    extras (a partial phone number, a recovery email, sometimes a display
+    name); surface those in the title when present so they're visible
+    without digging into the exported metadata."""
+    parts = []
+    if result.get("phoneNumber"):
+        parts.append(f"phone: {result['phoneNumber']}")
+    if result.get("emailrecovery"):
+        parts.append(f"recovery: {result['emailrecovery']}")
+    others = result.get("others")
+    if isinstance(others, dict):
+        for key in ("username", "name", "fullname", "FullName", "displayName"):
+            if others.get(key):
+                parts.append(f"{key}: {others[key]}")
+                break
+    return ", ".join(parts)
+
+
 class HoleheBridgePlugin(SourcePlugin):
     name: ClassVar[str] = "holehe"
     category: ClassVar[str] = "social"
@@ -108,12 +129,14 @@ class HoleheBridgePlugin(SourcePlugin):
                 continue
             site_name = result.get("name") or result.get("domain", "unknown")
             domain = result.get("domain", "")
+            extra_hint = _summarize_extras(result)
+            title = f"Email registered on {site_name}" + (f" ({extra_hint})" if extra_hint else "")
             findings.append(Finding(
                 source=f"{self.name}:{site_name}",
                 identifier=identifier,
                 status=MatchStatus.CONFIRMED,
                 source_url=f"https://{domain}" if domain else "",
-                title=f"Email registered on {site_name}",
+                title=title,
                 category=self.category,
                 metadata={
                     "site": site_name,
