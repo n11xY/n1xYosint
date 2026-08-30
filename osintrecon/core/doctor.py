@@ -14,6 +14,7 @@ import socket
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urlparse
 
 from osintrecon.core.config import Config
@@ -74,12 +75,42 @@ class DoctorReport:
     evidence_error: str = ""
     evidence_checked: bool = False
     proxy: str | None = None
+    proxy_reachable: Optional[bool] = None  # None = no proxy configured, so not checked
+    proxy_error: str = ""
     sources: list[SourceCheck] = field(default_factory=list)
     elapsed: float = 0.0
 
 
 def _extract_domain(url: str) -> str:
     return urlparse(url.replace("{}", "x")).netloc
+
+
+def _parse_proxy_host_port(proxy_url: str) -> tuple[str, int] | None:
+    parsed = urlparse(proxy_url)
+    if not parsed.hostname or not parsed.port:
+        return None
+    return parsed.hostname, parsed.port
+
+
+async def _check_proxy_reachable(proxy_url: str) -> tuple[bool, str]:
+    """A raw TCP connect to the proxy's host:port -- confirms something is
+    actually listening there, without doing a full SOCKS/HTTP handshake.
+    Catches the single most common proxy misconfiguration: Tor (or whatever
+    the proxy is) simply isn't running."""
+    hostport = _parse_proxy_host_port(proxy_url)
+    if hostport is None:
+        return False, f"could not parse host/port from {proxy_url!r}"
+    host, port = hostport
+    try:
+        _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=5)
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except OSError:
+            pass
+        return True, ""
+    except (OSError, asyncio.TimeoutError) as exc:
+        return False, str(exc) or type(exc).__name__
 
 
 def _check_path_writable(path: Path) -> tuple[bool, str]:
@@ -119,6 +150,8 @@ async def run_doctor(config: Config) -> DoctorReport:
         report.evidence_writable, report.evidence_error = _check_path_writable(ev_path)
 
     report.proxy = config.get("proxy")
+    if report.proxy:
+        report.proxy_reachable, report.proxy_error = await _check_proxy_reachable(report.proxy)
 
     async with AsyncHttpClient() as http:
         registry = PluginRegistry(config, http).discover()

@@ -232,7 +232,13 @@ class AsyncHttpClient:
 
                         response.evidence_path = await self._save_evidence(source, url, response)
                         return response
-                except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as exc:
+                    # OSError covers failures that don't come from aiohttp
+                    # itself -- notably aiohttp_socks/python_socks proxy
+                    # errors (e.g. the configured SOCKS proxy isn't actually
+                    # running), which otherwise propagate uncaught and crash
+                    # the calling plugin with a raw traceback instead of a
+                    # clean, per-source error.
                     last_error = str(exc) or type(exc).__name__
                     log.debug("request failed (%s attempt %d/%d): %s", source, attempt + 1, self.retries + 1, exc)
                     if attempt < self.retries:

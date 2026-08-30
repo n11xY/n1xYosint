@@ -102,7 +102,14 @@ def render_doctor(report: DoctorReport, console: Console | None = None, verbose:
             "Evidence path writable",
             "[green]yes[/green]" if report.evidence_writable else f"[red]no: {report.evidence_error}[/red]",
         )
-    setup_table.add_row("Proxy", report.proxy or "[dim]none configured[/dim]")
+    if report.proxy:
+        if report.proxy_reachable:
+            proxy_status = f"{report.proxy} [green](reachable)[/green]"
+        else:
+            proxy_status = f"{report.proxy} [red](not reachable: {report.proxy_error})[/red]"
+    else:
+        proxy_status = "[dim]none configured[/dim]"
+    setup_table.add_row("Proxy", proxy_status)
     console.print(setup_table)
 
     sources_table = Table(title="Sources", expand=True)
@@ -147,6 +154,13 @@ def render_doctor(report: DoctorReport, console: Console | None = None, verbose:
             "[dim]These sources will error out mid-scan. If unrelated domains resolve fine, "
             "this is likely a network/VPN/DNS-filtering issue specific to those hosts, not a "
             "framework bug -- see README for troubleshooting.[/dim]"
+        )
+
+    if report.proxy and not report.proxy_reachable:
+        console.print(
+            f"[red]Proxy {report.proxy} is not reachable ({report.proxy_error}).[/red] "
+            "[dim]Every request will fail until it's actually running -- e.g. for Tor: "
+            "sudo apt install tor && sudo systemctl start tor[/dim]"
         )
 
     ready_count = sum(1 for c in report.sources if c.ready)

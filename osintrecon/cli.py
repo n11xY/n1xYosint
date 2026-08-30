@@ -103,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         has_problems = (
             not report.cache_writable
             or (report.evidence_checked and not report.evidence_writable)
+            or report.proxy_reachable is False
             or any(not d.ok for c in report.sources for d in c.domains)
         )
         return 1 if has_problems else 0
