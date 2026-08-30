@@ -30,6 +30,7 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "minecraft": ["api.mojang.com"],
     "bluesky": ["public.api.bsky.app"],
     "anilist": ["graphql.anilist.co"],
+    "discord": ["discord.com"],
     "gravatar": ["www.gravatar.com"],
     "pastebin_search": ["psbdmp.ws"],
     "xposedornot": ["api.xposedornot.com"],

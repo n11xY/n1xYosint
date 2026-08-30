@@ -78,5 +78,11 @@
   {"name": "Lichess", "category": "social", "url": "https://lichess.org/@/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "OpenSea", "category": "profile-directory", "url": "https://opensea.io/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "NuGet", "category": "code-hosting", "url": "https://www.nuget.org/profiles/{}", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Fiverr", "category": "profile-directory", "url": "https://www.fiverr.com/{}", "check": "status", "found_status": 200, "not_found_status": 404}
+  {"name": "Fiverr", "category": "profile-directory", "url": "https://www.fiverr.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Freesound", "category": "social", "url": "https://freesound.org/people/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "OpenStreetMap", "category": "profile-directory", "url": "https://www.openstreetmap.org/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Setlist.fm", "category": "social", "url": "https://www.setlist.fm/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Scratch", "category": "social", "url": "https://scratch.mit.edu/users/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Slashdot", "category": "forum", "url": "https://slashdot.org/~{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Patreon", "category": "profile-directory", "url": "https://www.patreon.com/{}", "check": "status", "found_status": 200, "not_found_status": 404}
 ]
