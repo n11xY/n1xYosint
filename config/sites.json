@@ -73,5 +73,10 @@
   {"name": "BeerAdvocate", "category": "social", "url": "https://www.beeradvocate.com/community/members/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "WordPress.org", "category": "forum", "url": "https://profiles.wordpress.org/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "LibraryThing", "category": "social", "url": "https://www.librarything.com/profile/{}", "check": "message", "not_found_text": "doesn't exist"},
-  {"name": "Kick", "category": "social", "url": "https://kick.com/{}", "check": "message", "not_found_text": "User not found"}
+  {"name": "Kick", "category": "social", "url": "https://kick.com/{}", "check": "message", "not_found_text": "User not found"},
+  {"name": "Codewars", "category": "code-hosting", "url": "https://www.codewars.com/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Lichess", "category": "social", "url": "https://lichess.org/@/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "OpenSea", "category": "profile-directory", "url": "https://opensea.io/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "NuGet", "category": "code-hosting", "url": "https://www.nuget.org/profiles/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Fiverr", "category": "profile-directory", "url": "https://www.fiverr.com/{}", "check": "status", "found_status": 200, "not_found_status": 404}
 ]

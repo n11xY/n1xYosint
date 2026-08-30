@@ -21,7 +21,7 @@ together silently, so you always know how much to trust a hit.
 
 ## Features
 
-- 75-site username enumeration database (GitHub, Reddit, Instagram, Steam, YouTube, Twitch, ...) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, Twitch, and Steam
+- 80-site username enumeration database (GitHub, Reddit, Instagram, Steam, YouTube, Twitch, ...) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
 - Multi-hop enrichment (`--depth`) — automatically investigates identifiers discovered along the way (an email pulled from a bio, say), with cycle protection and a configurable cap
@@ -82,9 +82,9 @@ configuration.
 
 | Module | Category | Identifier | Notes |
 |---|---|---|---|
-| `username_sites` | social/various | username | 75-site database, `config/sites.json` |
+| `username_sites` | social/various | username | 80-site database, `config/sites.json` |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
-| `roblox` / `minecraft` / `bluesky` | social | username | official public APIs |
+| `roblox` / `minecraft` / `bluesky` / `anilist` | social | username | official public APIs |
 | `gravatar` | profile-directory | email | |
 | `pastebin_search` | paste | both | |
 | `xposedornot` | breach | email | free, no key |
