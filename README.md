@@ -21,7 +21,7 @@ together silently, so you always know how much to trust a hit.
 
 ## Features
 
-- 80-site curated username enumeration database, plus a live bridge to [Sherlock](https://github.com/sherlock-project/sherlock)'s ~480-site database for wider coverage, plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
+- 80-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
 - Multi-hop enrichment (`--depth`) — automatically investigates identifiers discovered along the way (an email pulled from a bio, say), with cycle protection and a configurable cap
@@ -83,7 +83,6 @@ configuration.
 | Module | Category | Identifier | Notes |
 |---|---|---|---|
 | `username_sites` | social/various | username | 80-site database, `config/sites.json` |
-| `sherlock` | social/various | username | ~480 sites, fetched live from [Sherlock](https://github.com/sherlock-project/sherlock)'s own maintained database -- see caveats below |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
 | `roblox` / `minecraft` / `bluesky` / `anilist` | social | username | official public APIs |
 | `gravatar` | profile-directory | email | |
@@ -98,21 +97,6 @@ configuration.
 | `holehe` | social | email | optional: `pip install -e ".[holehe]"` — bridges to the [holehe](https://github.com/megadose/holehe) project for registration checks across 120+ sites |
 
 Key-gated modules are skipped silently when unconfigured.
-
-**About the `sherlock` module:** it fetches Sherlock's `data.json` once
-(cached 24h) and interprets it directly -- status-code, message, and
-redirect-target checks, including a few sites that need a POST request
-(e.g. Discord's own username-availability endpoint, which is how username
-checking is possible there at all despite Discord having no public profile
-pages). Some entries in Sherlock's list are unreliable in exactly the way
-described in the note above -- bot-walled, or the check assumption no
-longer holds -- since it's checked live rather than individually
-hand-verified the way `config/sites.json` is; this module treats any
-non-2xx/non-expected response as inconclusive (never reports a false
-"confirmed") but may occasionally miss a real account. It also naturally
-overlaps with `username_sites` for platforms both track. Given the size
-(~480 requests per identifier), it adds real time to a scan -- disable it
-in config for quick lookups if that matters more than coverage.
 
 ## Writing a plugin
 

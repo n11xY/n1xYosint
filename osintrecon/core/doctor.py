@@ -151,14 +151,6 @@ async def run_doctor(config: Config) -> DoctorReport:
                     if domain and domain not in seen:
                         seen.add(domain)
                         dns_jobs.append((check, asyncio.create_task(_dns_check(domain, sem))))
-            elif cls.name == "sherlock":
-                sites_db = await probe._load_sites()
-                seen_sherlock: set[str] = set()
-                for site in sites_db:
-                    domain = _extract_domain(site.get("urlProbe") or site.get("url", ""))
-                    if domain and domain not in seen_sherlock:
-                        seen_sherlock.add(domain)
-                        dns_jobs.append((check, asyncio.create_task(_dns_check(domain, sem))))
             else:
                 for domain in PLUGIN_DOMAINS.get(cls.name, []):
                     dns_jobs.append((check, asyncio.create_task(_dns_check(domain, sem))))

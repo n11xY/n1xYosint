@@ -39,11 +39,6 @@ sources:
     enabled: true
     sites_db: null            # defaults to config/sites.json bundled with the framework
 
-  sherlock:
-    enabled: true              # ~480 sites from Sherlock's live database -- adds real time to a scan
-    concurrency: 25             # max concurrent site checks within this one module
-    include_nsfw: false         # Sherlock flags ~19 adult sites; excluded by default
-
   github:
     enabled: true
     api_key: null              # optional GitHub PAT, raises API rate limit (not required)
