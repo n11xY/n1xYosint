@@ -36,4 +36,4 @@ include = ["osintrecon*", "webapp*"]
 
 [tool.setuptools.package-data]
 osintrecon = []
-webapp = ["templates/*.html", "static/*.css"]
+webapp = ["templates/*.html", "static/*.css", "static/*.js"]
