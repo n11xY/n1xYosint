@@ -6,7 +6,7 @@
   {"name": "Reddit", "category": "forum", "url": "https://www.reddit.com/user/{}/about.json", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "HackerNews", "category": "forum", "url": "https://news.ycombinator.com/user?id={}", "check": "message", "not_found_text": "No such user."},
   {"name": "DevTo", "category": "forum", "url": "https://dev.to/{}", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Medium", "category": "social", "url": "https://medium.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Medium", "category": "social", "url": "https://medium.com/@{}", "check": "message", "not_found_text": "PAGE NOT FOUND"},
   {"name": "Instagram", "category": "social", "url": "https://www.instagram.com/{}/", "check": "message", "not_found_text": "Sorry, this page isn't available."},
   {"name": "TikTok", "category": "social", "url": "https://www.tiktok.com/@{}", "check": "message", "not_found_text": "Couldn't find this account"},
   {"name": "Pinterest", "category": "social", "url": "https://www.pinterest.com/{}/", "check": "message", "not_found_text": "User not found"},
@@ -60,5 +60,18 @@
   {"name": "Substack", "category": "social", "url": "https://{}.substack.com", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "MyAnimeList", "category": "social", "url": "https://myanimelist.net/profile/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Hashnode", "category": "forum", "url": "https://hashnode.com/@{}", "check": "message", "not_found_text": "User not found"},
-  {"name": "Buy Me a Coffee", "category": "profile-directory", "url": "https://www.buymeacoffee.com/{}", "check": "status", "found_status": 200, "not_found_status": 404}
+  {"name": "Buy Me a Coffee", "category": "profile-directory", "url": "https://www.buymeacoffee.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Goodreads", "category": "social", "url": "https://www.goodreads.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "DevPost", "category": "profile-directory", "url": "https://devpost.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Lobsters", "category": "forum", "url": "https://lobste.rs/u/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Rumble", "category": "social", "url": "https://rumble.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Speedrun.com", "category": "social", "url": "https://www.speedrun.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Backloggd", "category": "social", "url": "https://backloggd.com/u/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Giant Bomb", "category": "social", "url": "https://www.giantbomb.com/profile/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Wellfound", "category": "profile-directory", "url": "https://wellfound.com/u/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Peerlist", "category": "profile-directory", "url": "https://peerlist.io/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "BeerAdvocate", "category": "social", "url": "https://www.beeradvocate.com/community/members/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "WordPress.org", "category": "forum", "url": "https://profiles.wordpress.org/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "LibraryThing", "category": "social", "url": "https://www.librarything.com/profile/{}", "check": "message", "not_found_text": "doesn't exist"},
+  {"name": "Kick", "category": "social", "url": "https://kick.com/{}", "check": "message", "not_found_text": "User not found"}
 ]
