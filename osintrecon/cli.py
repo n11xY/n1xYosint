@@ -15,11 +15,12 @@ import sys
 from rich.console import Console
 
 from osintrecon.core.config import Config
+from osintrecon.core.doctor import run_doctor
 from osintrecon.core.engine import Engine
 from osintrecon.core.logging_setup import setup_logging
 from osintrecon.core.normalize import load_from_file, normalize_batch
 from osintrecon.output import exporters
-from osintrecon.output.renderer import render
+from osintrecon.output.renderer import render, render_doctor
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,6 +34,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-f", "--file", help="Path to a file with one identifier per line")
     parser.add_argument("--interactive", action="store_true", help="Prompt for identifiers interactively")
     parser.add_argument("-c", "--config", help="Path to a YAML/JSON config file")
+    parser.add_argument("--doctor", action="store_true",
+                         help="Run setup diagnostics (config, filesystem paths, DNS reachability "
+                              "per source) and exit -- no identifiers needed")
     parser.add_argument("--export", action="append", default=[], metavar="FORMAT:PATH",
                          help="Export results, e.g. --export json:out.json (repeatable; formats: json,csv,txt)")
     parser.add_argument("--save-evidence", action="store_true", help="Persist raw responses as evidence files")
@@ -41,6 +45,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout", type=float, help="Per-request timeout in seconds")
     parser.add_argument("--no-cache", action="store_true", help="Disable the response cache for this run")
     parser.add_argument("--hide-uncertain", action="store_true", help="Hide UNCERTAIN-confidence findings in the terminal view")
+    parser.add_argument("--depth", type=int, default=1, metavar="N",
+                         help="Enrichment depth: also investigate identifiers discovered along the way "
+                              "(e.g. an email found in a bio), this many rounds deep. Default 1 = seeds only.")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase log verbosity (-v, -vv)")
     parser.add_argument("--log-file", help="Write full logs to this file")
     return parser
@@ -84,6 +91,22 @@ def main(argv: list[str] | None = None) -> int:
     level = "DEBUG" if args.verbose >= 2 else ("INFO" if args.verbose == 1 else "WARNING")
     log = setup_logging(level=level, log_file=args.log_file)
 
+    if args.doctor:
+        try:
+            config = Config.load(args.config)
+        except (FileNotFoundError, ValueError, RuntimeError) as exc:
+            Console().print(f"[red]Config error: {exc}[/red]")
+            return 1
+        _apply_cli_overrides(config, args)
+        report = asyncio.run(run_doctor(config))
+        render_doctor(report, console=Console())
+        has_problems = (
+            not report.cache_writable
+            or (report.evidence_checked and not report.evidence_writable)
+            or any(not d.ok for c in report.sources for d in c.domains)
+        )
+        return 1 if has_problems else 0
+
     raw_identifiers = _collect_raw_identifiers(args)
     if not raw_identifiers:
         parser.error("no identifiers supplied: use -u/-e, --file, or --interactive")
@@ -104,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     _apply_cli_overrides(config, args)
 
     engine = Engine(config)
-    result = asyncio.run(engine.run(normalization.identifiers))
+    result = asyncio.run(engine.run(normalization.identifiers, depth=args.depth))
     result.rejected_inputs = normalization.rejected
 
     console = Console()

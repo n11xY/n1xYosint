@@ -26,6 +26,7 @@ def _finding_to_dict(f: Finding) -> dict:
         ],
         "evidence_path": f.evidence_path,
         "timestamp": f.timestamp,
+        "hop": f.hop,
     }
 
 
@@ -48,7 +49,7 @@ def export_json(result: RunResult, path: str) -> None:
 
 CSV_FIELDS = [
     "finding_id", "source", "category", "identifier_type", "identifier_value",
-    "status", "confidence", "title", "source_url", "timestamp",
+    "status", "confidence", "title", "source_url", "timestamp", "hop",
 ]
 
 

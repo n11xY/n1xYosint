@@ -69,6 +69,7 @@ class Finding:
     evidence_path: Optional[str] = None      # path to saved raw response, if --save-evidence
     timestamp: float = field(default_factory=time.time)
     finding_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    hop: int = 0                             # 0 = seed identifier, 1+ = discovered via enrichment
 
     def dedup_key(self) -> tuple:
         return (self.source, self.identifier.type, self.identifier.value, self.source_url)
@@ -101,6 +102,8 @@ class RunStats:
     findings_total: int = 0
     duplicates_removed: int = 0
     cache_hits: int = 0
+    enrichment_hops_completed: int = 0
+    enrichment_identifiers_discovered: int = 0
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
 
@@ -117,5 +120,7 @@ class RunStats:
             "findings_total": self.findings_total,
             "duplicates_removed": self.duplicates_removed,
             "cache_hits": self.cache_hits,
+            "enrichment_hops_completed": self.enrichment_hops_completed,
+            "enrichment_identifiers_discovered": self.enrichment_identifiers_discovered,
             "elapsed_seconds": round(self.elapsed, 2),
         }

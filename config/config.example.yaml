@@ -6,6 +6,7 @@ timeout_seconds: 10
 retries: 2
 retry_backoff: 1.5            # exponential backoff multiplier between retries
 rate_limit_per_source: 5      # max concurrent requests to any single source module
+max_enrichment_identifiers: 200  # safety cap on total identifiers when using --depth > 1
 
 user_agent: "n1xYosint/0.1 (+authorized OSINT research)"
 
