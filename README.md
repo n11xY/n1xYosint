@@ -86,6 +86,7 @@ configuration.
 | `github` / `gitlab` | code-hosting | username | official public APIs |
 | `roblox` / `minecraft` / `bluesky` / `anilist` | social | username | official public APIs |
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
+| `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |
 | `gravatar` | profile-directory | email | |
 | `pastebin_search` | paste | both | |
 | `xposedornot` | breach | email | free, no key |
