@@ -77,7 +77,9 @@ class AsyncHttpClient:
         # aiohttp's per-request `proxy=` kwarg only understands HTTP(S) proxies;
         # SOCKS4/5 (e.g. a local Tor instance on Kali) requires a dedicated
         # connector instead, provided by the aiohttp-socks package.
-        self._is_socks_proxy = bool(self.proxy) and self.proxy.startswith(("socks4://", "socks5://", "socks5h://"))
+        self._is_socks_proxy = bool(self.proxy) and self.proxy.startswith(
+            ("socks4://", "socks4a://", "socks5://", "socks5h://")
+        )
 
     async def __aenter__(self) -> "AsyncHttpClient":
         connector = None
@@ -89,7 +91,18 @@ class AsyncHttpClient:
                     "SOCKS proxy configured but aiohttp-socks is not installed "
                     "(pip install aiohttp-socks)"
                 ) from exc
-            connector = ProxyConnector.from_url(self.proxy)
+            # "socks5h://"/"socks4a://" (the curl/Tor-docs convention meaning
+            # "let the proxy resolve hostnames") aren't schemes python-socks
+            # recognizes -- it only knows plain "socks5"/"socks4" and always
+            # resolves remotely through the proxy for socks5 regardless, so
+            # the "h"/"a" suffix is just stripped rather than needing any
+            # different handling.
+            proxy_url = self.proxy
+            if proxy_url.startswith("socks5h://"):
+                proxy_url = "socks5://" + proxy_url[len("socks5h://"):]
+            elif proxy_url.startswith("socks4a://"):
+                proxy_url = "socks4://" + proxy_url[len("socks4a://"):]
+            connector = ProxyConnector.from_url(proxy_url)
         # A handful of real sites (e.g. Trakt.tv, whose Link: preload header
         # alone has run past 32KB in practice) send a single response header
         # past aiohttp's default 8190-byte line/field limit, which otherwise
