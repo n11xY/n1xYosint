@@ -90,14 +90,16 @@ class AsyncHttpClient:
                     "(pip install aiohttp-socks)"
                 ) from exc
             connector = ProxyConnector.from_url(self.proxy)
-        # A handful of real sites (e.g. Trakt.tv) send a single response
-        # header (typically a giant `Link:` preload list) past aiohttp's
-        # default 8190-byte line/field limit, which otherwise fails the
-        # whole request with a LineTooLong/FieldTooLong parser error before
-        # we ever see a status code. Give real-world pages more headroom.
+        # A handful of real sites (e.g. Trakt.tv, whose Link: preload header
+        # alone has run past 32KB in practice) send a single response header
+        # past aiohttp's default 8190-byte line/field limit, which otherwise
+        # fails the whole request with a LineTooLong/FieldTooLong parser
+        # error before we ever see a status code. Give real-world pages
+        # generous headroom -- this only raises how much we're willing to
+        # buffer/parse, not a security-sensitive limit for a client.
         self._session = aiohttp.ClientSession(
             timeout=self.timeout, connector=connector,
-            max_line_size=8190 * 4, max_field_size=8190 * 4,
+            max_line_size=8190 * 16, max_field_size=8190 * 16,
         )
         return self
 
