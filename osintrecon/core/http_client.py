@@ -90,7 +90,15 @@ class AsyncHttpClient:
                     "(pip install aiohttp-socks)"
                 ) from exc
             connector = ProxyConnector.from_url(self.proxy)
-        self._session = aiohttp.ClientSession(timeout=self.timeout, connector=connector)
+        # A handful of real sites (e.g. Trakt.tv) send a single response
+        # header (typically a giant `Link:` preload list) past aiohttp's
+        # default 8190-byte line/field limit, which otherwise fails the
+        # whole request with a LineTooLong/FieldTooLong parser error before
+        # we ever see a status code. Give real-world pages more headroom.
+        self._session = aiohttp.ClientSession(
+            timeout=self.timeout, connector=connector,
+            max_line_size=8190 * 4, max_field_size=8190 * 4,
+        )
         return self
 
     async def __aexit__(self, *exc: Any) -> None:
@@ -190,7 +198,7 @@ class AsyncHttpClient:
                         response.evidence_path = await self._save_evidence(source, url, response)
                         return response
                 except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
-                    last_error = str(exc)
+                    last_error = str(exc) or type(exc).__name__
                     log.debug("request failed (%s attempt %d/%d): %s", source, attempt + 1, self.retries + 1, exc)
                     if attempt < self.retries:
                         await asyncio.sleep(self.retry_backoff ** attempt)
