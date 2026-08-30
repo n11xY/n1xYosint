@@ -124,21 +124,6 @@ class MyPlugin(SourcePlugin):
 Drop the file in `osintrecon/plugins/sources/` (or point `plugins_dir` in
 config at an external directory) — the registry picks it up automatically.
 
-## Web UI
-
-A login-required web front-end is available for deployments other people
-will reach (a browser interface instead of the CLI). It logs every search
-with the account and source IP for accountability, since that's the whole
-safety mechanism once this stops being something only you run on your own
-machine. See [README-WEBAPP.md](README-WEBAPP.md) for setup and the security
-checklist before deploying it publicly.
-
-```bash
-pip install -e ".[webapp]"
-export N1XYOSINT_WEB_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-uvicorn webapp.app:app --reload --port 8000
-```
-
 ## Tests
 
 ```bash
