@@ -182,6 +182,26 @@ class AsyncHttpClient:
                         proxy=None if self._is_socks_proxy else self.proxy,
                         allow_redirects=True,
                     ) as resp:
+                        if resp.status == 429 and attempt < self.retries:
+                            # Rate-limited: worth a delayed retry rather than
+                            # giving up immediately. Respect Retry-After if
+                            # the server sent one (seconds; HTTP-date values
+                            # are rare for APIs and not worth parsing here),
+                            # otherwise fall back to the normal backoff,
+                            # capped so one slow site can't stall the run.
+                            retry_after = resp.headers.get("Retry-After")
+                            delay = self.retry_backoff ** attempt
+                            if retry_after:
+                                try:
+                                    delay = max(delay, float(retry_after))
+                                except ValueError:
+                                    pass
+                            delay = min(delay, 30)
+                            log.debug("429 from %s, retrying in %.1fs (attempt %d/%d)",
+                                      source, delay, attempt + 1, self.retries + 1)
+                            await asyncio.sleep(delay)
+                            continue
+
                         text = await resp.text(errors="replace")
                         ok = resp.status < 400 or (expected_statuses and resp.status in expected_statuses)
                         response = HttpResponse(
