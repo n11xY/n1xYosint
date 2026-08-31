@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 from typing import ClassVar
 
+from osintrecon.core import normalize
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
@@ -48,6 +49,7 @@ class GravatarPlugin(SourcePlugin):
         metadata = {"avatar_url": f"https://www.gravatar.com/avatar/{h}"}
         title = f"Gravatar avatar exists for {identifier.value}"
         status = MatchStatus.PROBABLE
+        discovered: list[Identifier] = []
 
         if profile_resp.status == 200:
             data = profile_resp.json() or {}
@@ -59,6 +61,11 @@ class GravatarPlugin(SourcePlugin):
                 # displayName itself is what's set to a full name ("Beau
                 # Lebens") when the person filled one in, so that's the name.
                 display_name = entry.get("displayName")
+                # Feeds --depth enrichment: a name discovered here becomes a
+                # new seed identifier next round (e.g. search_api looks it
+                # up), same mechanism already used for emails found in bios.
+                if display_name and normalize.NAME_RE.match(display_name.strip()):
+                    discovered.append(Identifier(value=normalize.normalize_name(display_name), type=IdentifierType.NAME))
 
                 status = MatchStatus.CONFIRMED
                 title = f"Gravatar profile: {display_name or identifier.value}"
@@ -80,5 +87,6 @@ class GravatarPlugin(SourcePlugin):
             title=title,
             category=self.category,
             metadata=metadata,
+            discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,
         )]

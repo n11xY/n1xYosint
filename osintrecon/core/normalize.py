@@ -22,6 +22,12 @@ USERNAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,39}$")
 # (e.g. a Steam ID) never gets misclassified as a phone number: without a
 # country code a bare digit string is genuinely ambiguous, so we don't guess.
 PHONE_CANDIDATE_RE = re.compile(r"^\+[\d\s\-.()]{7,20}$")
+# A full name: 2+ space-separated words, each starting with a letter
+# (apostrophes/hyphens allowed inside a word for "O'Brien", "Anne-Marie").
+# USERNAME_RE already rejects anything with a space, so this never takes a
+# real username away from that branch -- it only classifies input that was
+# always going to be rejected otherwise.
+NAME_RE = re.compile(r"^[A-Za-z][A-Za-z'\-]*(\s+[A-Za-z][A-Za-z'\-]*)+$")
 
 
 @dataclass
@@ -46,6 +52,12 @@ def normalize_phone(raw: str) -> str:
     return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
 
 
+def normalize_name(raw: str) -> str:
+    # Collapse internal whitespace only -- casing is left alone ("McDonald",
+    # "O'Brien" are valid as typed; force-titlecasing would break them).
+    return " ".join(raw.split())
+
+
 def classify(raw: str) -> IdentifierType | None:
     value = raw.strip()
     if not value:
@@ -58,6 +70,8 @@ def classify(raw: str) -> IdentifierType | None:
     # *after* something, matching how an actual address is shaped.
     if "@" in value and not value.startswith("@"):
         return IdentifierType.EMAIL
+    if NAME_RE.match(value):
+        return IdentifierType.NAME
     return IdentifierType.USERNAME
 
 
@@ -81,6 +95,9 @@ def validate_and_build(raw: str) -> tuple[Identifier | None, str | None]:
         if not EMAIL_RE.match(norm):
             return None, f"invalid email format: {raw!r}"
         return Identifier(value=norm, type=IdentifierType.EMAIL, raw=raw), None
+
+    if kind == IdentifierType.NAME:
+        return Identifier(value=normalize_name(raw), type=IdentifierType.NAME, raw=raw), None
 
     norm = normalize_username(raw)
     if not USERNAME_RE.match(norm):

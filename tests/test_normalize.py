@@ -59,3 +59,24 @@ def test_phone_dedups_across_formatting():
     result = normalize_batch(["+1 (415) 867-5309", "+14158675309"])
     assert len(result.identifiers) == 1
     assert result.identifiers[0].value == "+14158675309"
+
+
+def test_valid_name_classified_and_whitespace_collapsed():
+    ident, reason = validate_and_build("  Beau   Lebens  ")
+    assert reason is None
+    assert ident.type == IdentifierType.NAME
+    assert ident.value == "Beau Lebens"
+
+
+def test_name_preserves_casing_and_apostrophes():
+    ident, reason = validate_and_build("Anne-Marie O'Brien")
+    assert reason is None
+    assert ident.type == IdentifierType.NAME
+    assert ident.value == "Anne-Marie O'Brien"  # not forced to title case
+
+
+def test_single_word_is_not_misclassified_as_name():
+    # No space -> no basis to tell "Madonna" (a name) from a plain username.
+    ident, reason = validate_and_build("Madonna")
+    assert reason is None
+    assert ident.type == IdentifierType.USERNAME

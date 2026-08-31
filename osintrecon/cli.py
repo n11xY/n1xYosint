@@ -33,6 +33,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-e", "--email", action="append", default=[], help="Email to investigate (repeatable)")
     parser.add_argument("-p", "--phone", action="append", default=[],
                          help="Phone number to investigate, in international format e.g. +15551234567 (repeatable)")
+    parser.add_argument("-n", "--name", action="append", default=[],
+                         help='Full name to investigate, e.g. "John Doe" (repeatable)')
     parser.add_argument("-f", "--file", help="Path to a file with one identifier per line")
     parser.add_argument("--interactive", action="store_true", help="Prompt for identifiers interactively")
     parser.add_argument("-c", "--config", help="Path to a YAML/JSON config file")
@@ -56,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _collect_raw_identifiers(args: argparse.Namespace) -> list[str]:
-    raw: list[str] = list(args.username) + list(args.email) + list(args.phone)
+    raw: list[str] = list(args.username) + list(args.email) + list(args.phone) + list(args.name)
     if args.file:
         raw.extend(load_from_file(args.file))
     if args.interactive:

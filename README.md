@@ -53,7 +53,7 @@ pip install -e .
 ## Usage
 
 ```bash
-n1xyosint -u johndoe -e john@example.com -p +15551234567
+n1xyosint -u johndoe -e john@example.com -p +15551234567 -n "John Doe"
 
 # from a file, one identifier per line
 n1xyosint -f targets.txt --export json:report.json --export csv:report.csv
@@ -65,8 +65,8 @@ n1xyosint --interactive
 n1xyosint -u johndoe -c config/config.yaml --save-evidence -vv \
   --proxy socks5h://127.0.0.1:9050
 
-# also investigate identifiers discovered along the way (e.g. an email
-# found in a GitHub bio gets checked too), two rounds deep
+# also investigate identifiers discovered along the way -- an email found
+# in a bio, or a full name pulled from a Gravatar profile -- two rounds deep
 n1xyosint -u johndoe --depth 2
 
 # check setup before running a real scan: config, filesystem paths, and
@@ -97,7 +97,7 @@ configuration.
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
 | `phone_lookup` | phone | phone | free, no key, no API call — offline validity/country/carrier/line-type via libphonenumber |
 | `abstractapi_phone` | phone | phone | key required (free tier), live carrier/line-type/location lookup — **not live-verified**, see the module's docstring |
-| `search_api` | search-engine | username, email, phone | key required, disabled by default |
+| `search_api` | search-engine | username, email, phone, name | key required, disabled by default |
 | `twitter_api` | social | username | key required, disabled by default (paid API tier) |
 | `holehe` | social | email | optional: `pip install -e ".[holehe]"` — bridges to the [holehe](https://github.com/megadose/holehe) project for registration checks across 120+ sites |
 
