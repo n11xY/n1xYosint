@@ -84,5 +84,10 @@
   {"name": "Setlist.fm", "category": "social", "url": "https://www.setlist.fm/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Scratch", "category": "social", "url": "https://scratch.mit.edu/users/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Slashdot", "category": "forum", "url": "https://slashdot.org/~{}", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Patreon", "category": "profile-directory", "url": "https://www.patreon.com/{}", "check": "status", "found_status": 200, "not_found_status": 404}
+  {"name": "Patreon", "category": "profile-directory", "url": "https://www.patreon.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "AtCoder", "category": "code-hosting", "url": "https://atcoder.jp/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Pastebin", "category": "profile-directory", "url": "https://pastebin.com/u/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Poshmark", "category": "profile-directory", "url": "https://poshmark.com/closet/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Observable", "category": "code-hosting", "url": "https://observablehq.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Gumroad", "category": "profile-directory", "url": "https://{}.gumroad.com", "check": "status", "found_status": 200, "not_found_status": 404}
 ]
