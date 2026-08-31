@@ -52,7 +52,11 @@ def classify(raw: str) -> IdentifierType | None:
         return None
     if PHONE_CANDIDATE_RE.match(value):
         return IdentifierType.PHONE
-    if "@" in value:
+    # A leading "@" is the @mention convention (Twitter/Instagram/etc.), not
+    # an email separator -- "@some_user" has no domain before the "@" and
+    # was never meant as one. Only classify as email when "@" shows up
+    # *after* something, matching how an actual address is shaped.
+    if "@" in value and not value.startswith("@"):
         return IdentifierType.EMAIL
     return IdentifierType.USERNAME
 
