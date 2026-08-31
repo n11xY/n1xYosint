@@ -80,3 +80,10 @@ def test_single_word_is_not_misclassified_as_name():
     ident, reason = validate_and_build("Madonna")
     assert reason is None
     assert ident.type == IdentifierType.USERNAME
+
+
+def test_name_supports_non_ascii_letters():
+    ident, reason = validate_and_build("Rüzgar Karan Yönlü")
+    assert reason is None
+    assert ident.type == IdentifierType.NAME
+    assert ident.value == "Rüzgar Karan Yönlü"

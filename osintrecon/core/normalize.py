@@ -24,10 +24,13 @@ USERNAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,39}$")
 PHONE_CANDIDATE_RE = re.compile(r"^\+[\d\s\-.()]{7,20}$")
 # A full name: 2+ space-separated words, each starting with a letter
 # (apostrophes/hyphens allowed inside a word for "O'Brien", "Anne-Marie").
-# USERNAME_RE already rejects anything with a space, so this never takes a
-# real username away from that branch -- it only classifies input that was
-# always going to be rejected otherwise.
-NAME_RE = re.compile(r"^[A-Za-z][A-Za-z'\-]*(\s+[A-Za-z][A-Za-z'\-]*)+$")
+# [^\W\d_] means "any Unicode letter" (a \w character that's neither a
+# digit nor underscore) rather than [A-Za-z] -- names aren't ASCII-only,
+# and rejecting "Rüzgar Yönlü" or "Ahmet Şahin" would defeat the feature
+# for most of the world. USERNAME_RE already rejects anything with a
+# space, so this never takes a real username away from that branch -- it
+# only classifies input that was always going to be rejected otherwise.
+NAME_RE = re.compile(r"^[^\W\d_][^\W\d_'\-]*(\s+[^\W\d_][^\W\d_'\-]*)+$")
 
 
 @dataclass
