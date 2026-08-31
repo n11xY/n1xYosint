@@ -54,10 +54,18 @@ class GravatarPlugin(SourcePlugin):
             entries = data.get("entry", [])
             if entries:
                 entry = entries[0]
+                # Live-checked against Gravatar's actual response (curl, not
+                # docs): there's no separate given/family-name field --
+                # displayName itself is what's set to a full name ("Beau
+                # Lebens") when the person filled one in, so that's the name.
+                display_name = entry.get("displayName")
+
                 status = MatchStatus.CONFIRMED
-                title = f"Gravatar profile: {entry.get('displayName', identifier.value)}"
+                title = f"Gravatar profile: {display_name or identifier.value}"
                 metadata.update({
-                    "display_name": entry.get("displayName"),
+                    "display_name": display_name,
+                    "job_title": entry.get("job_title"),
+                    "company": entry.get("company"),
                     "profile_url": entry.get("profileUrl"),
                     "about_me": entry.get("aboutMe"),
                     "location": entry.get("currentLocation"),
