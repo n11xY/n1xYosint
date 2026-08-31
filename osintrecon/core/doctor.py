@@ -41,7 +41,7 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "twitch_api": ["id.twitch.tv", "api.twitch.tv"],
     "steam_api": ["api.steampowered.com"],
     "hunter_io": ["api.hunter.io"],
-    "search_api": ["api.bing.microsoft.com"],
+    "search_api": ["www.googleapis.com"],
     "twitter_api": ["api.twitter.com"],
     "abstractapi_phone": ["phonevalidation.abstractapi.com"],
 }

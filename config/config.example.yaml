@@ -66,10 +66,14 @@ sources:
                                  # more complete than xposedornot but not free
 
   search_api:
-    enabled: false               # disabled by default: requires a paid Bing Web Search API key
-    provider: bing
-    api_key: null                # or env var OSINTRECON_SEARCH_API_API_KEY
-    results_per_query: 10
+    enabled: false               # disabled by default: needs your own free API key + search engine
+    provider: google              # only supported provider -- Bing Web Search API was retired
+                                  # by Microsoft on 2025-08-11, no new keys possible
+    api_key: null                # https://console.cloud.google.com -- enable "Custom Search API"
+                                  # (or env var OSINTRECON_SEARCH_API_API_KEY)
+    cx: null                     # search engine ID from https://programmablesearchengine.google.com
+                                  # (configure it to search the entire web, not specific sites)
+    results_per_query: 10        # Google's API caps at 10 per request; free tier: 100 queries/day
 
   # -- Credential-gated sources that upgrade a heuristic HTML check into a
   # -- definitive (CONFIRMED) official-API result. All are free to sign up
