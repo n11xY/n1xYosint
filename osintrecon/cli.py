@@ -1,7 +1,7 @@
 """CLI entrypoint for n1xYosint.
 
 Usage examples:
-    n1xyosint -u johndoe -e john@example.com
+    n1xyosint -u johndoe -e john@example.com -p +15551234567
     n1xyosint -f targets.txt --export json:out.json --export csv:out.csv
     n1xyosint --interactive
     n1xyosint -u johndoe --config config/config.yaml --save-evidence -v
@@ -26,11 +26,13 @@ from osintrecon.output.renderer import render, render_doctor
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="n1xyosint",
-        description="Modular OSINT reconnaissance framework for username/email intelligence "
+        description="Modular OSINT reconnaissance framework for username/email/phone intelligence "
                     "gathering, limited to publicly accessible sources and legitimate APIs.",
     )
     parser.add_argument("-u", "--username", action="append", default=[], help="Username to investigate (repeatable)")
     parser.add_argument("-e", "--email", action="append", default=[], help="Email to investigate (repeatable)")
+    parser.add_argument("-p", "--phone", action="append", default=[],
+                         help="Phone number to investigate, in international format e.g. +15551234567 (repeatable)")
     parser.add_argument("-f", "--file", help="Path to a file with one identifier per line")
     parser.add_argument("--interactive", action="store_true", help="Prompt for identifiers interactively")
     parser.add_argument("-c", "--config", help="Path to a YAML/JSON config file")
@@ -54,12 +56,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _collect_raw_identifiers(args: argparse.Namespace) -> list[str]:
-    raw: list[str] = list(args.username) + list(args.email)
+    raw: list[str] = list(args.username) + list(args.email) + list(args.phone)
     if args.file:
         raw.extend(load_from_file(args.file))
     if args.interactive:
         console = Console()
-        console.print("[bold]Interactive mode[/bold] - enter one username or email per line, blank line to finish:")
+        console.print("[bold]Interactive mode[/bold] - enter one username, email, or phone number "
+                       "(e.g. +15551234567) per line, blank line to finish:")
         while True:
             try:
                 line = input("> ").strip()

@@ -32,3 +32,30 @@ def test_batch_dedups_and_reports_rejections():
     values = {i.value for i in result.identifiers}
     assert values == {"alice", "a@b.com"}
     assert len(result.rejected) == 2  # "" (empty input) and "bad user!" (invalid chars)
+
+
+def test_valid_phone_normalizes_to_e164():
+    ident, reason = validate_and_build("+1 (415) 867-5309")
+    assert reason is None
+    assert ident.type == IdentifierType.PHONE
+    assert ident.value == "+14158675309"
+
+
+def test_phone_without_plus_is_not_misclassified_as_phone():
+    # No leading "+" -> genuinely ambiguous (could be a numeric username,
+    # a Steam ID, ...), so this must NOT be auto-detected as a phone number.
+    ident, reason = validate_and_build("15552345678")
+    assert reason is None
+    assert ident.type == IdentifierType.USERNAME
+
+
+def test_invalid_phone_number_rejected():
+    ident, reason = validate_and_build("+1 555 123")  # too few digits to be a real NANP number
+    assert ident is None
+    assert "invalid phone" in reason
+
+
+def test_phone_dedups_across_formatting():
+    result = normalize_batch(["+1 (415) 867-5309", "+14158675309"])
+    assert len(result.identifiers) == 1
+    assert result.identifiers[0].value == "+14158675309"

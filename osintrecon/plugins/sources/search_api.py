@@ -24,7 +24,7 @@ BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
 class SearchAPIPlugin(SourcePlugin):
     name: ClassVar[str] = "search_api"
     category: ClassVar[str] = "search-engine"
-    accepts: ClassVar[set[IdentifierType]] = {IdentifierType.USERNAME, IdentifierType.EMAIL}
+    accepts: ClassVar[set[IdentifierType]] = {IdentifierType.USERNAME, IdentifierType.EMAIL, IdentifierType.PHONE}
     requires_api_key: ClassVar[bool] = True
     description: ClassVar[str] = "Queries a licensed web search API (Bing) for mentions of the identifier."
 

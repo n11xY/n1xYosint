@@ -55,6 +55,9 @@ sources:
   xposedornot:
     enabled: true               # free, no key needed -- HIBP alternative (breach exposure only)
 
+  phone_lookup:
+    enabled: true               # free, no key, no network call at all -- offline libphonenumber parsing
+
   hibp:
     enabled: true
     api_key: null               # paid (~$4.39/mo): https://haveibeenpwned.com/API/Key

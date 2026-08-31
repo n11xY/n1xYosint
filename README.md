@@ -1,7 +1,7 @@
 <h1 align="center">n1xYosint</h1>
 
 <p align="center">
-  Async, plugin-based OSINT reconnaissance for usernames and email addresses.
+  Async, plugin-based OSINT reconnaissance for usernames, email addresses, and phone numbers.
 </p>
 
 <p align="center">
@@ -10,10 +10,10 @@
   <img alt="Platform" src="https://img.shields.io/badge/platform-Kali%20Linux-557C94">
 </p>
 
-Point it at a username or email and it fans out across dozens of platforms
-and APIs concurrently, correlates whatever it finds back into linked
-identities, scores each result by how confident it actually is, and hands
-you a report — terminal, JSON, CSV, or TXT.
+Point it at a username, email, or phone number and it fans out across
+dozens of platforms and APIs concurrently, correlates whatever it finds
+back into linked identities, scores each result by how confident it
+actually is, and hands you a report — terminal, JSON, CSV, or TXT.
 
 Every result is either **confirmed** (an official API said so) or
 **probable** (a page-content heuristic said so) — the two are never mixed
@@ -23,6 +23,7 @@ together silently, so you always know how much to trust a hit.
 
 - 86-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
+- Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
 - Multi-hop enrichment (`--depth`) — automatically investigates identifiers discovered along the way (an email pulled from a bio, say), with cycle protection and a configurable cap
 - Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
@@ -52,7 +53,7 @@ pip install -e .
 ## Usage
 
 ```bash
-n1xyosint -u johndoe -e john@example.com
+n1xyosint -u johndoe -e john@example.com -p +15551234567
 
 # from a file, one identifier per line
 n1xyosint -f targets.txt --export json:report.json --export csv:report.csv
@@ -94,7 +95,8 @@ configuration.
 | `hibp` | breach + paste | email | key required, paid (~$4.39/mo) |
 | `twitch_api` / `steam_api` | social | username | key required (free), upgrades the heuristic site check to a confirmed API result |
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
-| `search_api` | search-engine | both | key required, disabled by default |
+| `phone_lookup` | phone | phone | free, no key, no API call — offline validity/country/carrier/line-type via libphonenumber |
+| `search_api` | search-engine | username, email, phone | key required, disabled by default |
 | `twitter_api` | social | username | key required, disabled by default (paid API tier) |
 | `holehe` | social | email | optional: `pip install -e ".[holehe]"` — bridges to the [holehe](https://github.com/megadose/holehe) project for registration checks across 120+ sites |
 

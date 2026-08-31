@@ -10,11 +10,18 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import phonenumbers
+
 from osintrecon.core.models import Identifier, IdentifierType
 
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$")
 # Conservative: letters, digits, dot, underscore, hyphen, 1-39 chars (covers most platforms)
 USERNAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,39}$")
+# Phone *candidates* only -- "+", digits, and common human separators (space,
+# dash, dot, parens). Requires a leading "+" so a plain numeric username
+# (e.g. a Steam ID) never gets misclassified as a phone number: without a
+# country code a bare digit string is genuinely ambiguous, so we don't guess.
+PHONE_CANDIDATE_RE = re.compile(r"^\+[\d\s\-.()]{7,20}$")
 
 
 @dataclass
@@ -31,10 +38,20 @@ def normalize_username(raw: str) -> str:
     return raw.strip().lstrip("@")
 
 
+def normalize_phone(raw: str) -> str:
+    """E.164 form (e.g. "+15551234567"), the canonical shape every phone
+    plugin/dedup check relies on -- so "+1 (555) 123-4567" and "+15551234567"
+    are recognized as the same identifier."""
+    parsed = phonenumbers.parse(raw.strip(), None)
+    return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+
+
 def classify(raw: str) -> IdentifierType | None:
     value = raw.strip()
     if not value:
         return None
+    if PHONE_CANDIDATE_RE.match(value):
+        return IdentifierType.PHONE
     if "@" in value:
         return IdentifierType.EMAIL
     return IdentifierType.USERNAME
@@ -45,6 +62,15 @@ def validate_and_build(raw: str) -> tuple[Identifier | None, str | None]:
     kind = classify(raw)
     if kind is None:
         return None, "empty input"
+
+    if kind == IdentifierType.PHONE:
+        try:
+            norm = normalize_phone(raw)
+        except phonenumbers.NumberParseException:
+            return None, f"invalid phone number: {raw!r}"
+        if not phonenumbers.is_valid_number(phonenumbers.parse(norm, None)):
+            return None, f"invalid phone number: {raw!r}"
+        return Identifier(value=norm, type=IdentifierType.PHONE, raw=raw), None
 
     if kind == IdentifierType.EMAIL:
         norm = normalize_email(raw)

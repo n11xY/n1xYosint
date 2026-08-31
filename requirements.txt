@@ -2,6 +2,7 @@ aiohttp>=3.9
 aiohttp-socks>=0.9   # enables socks5:// / socks5h:// proxy support (e.g. Tor on Kali)
 PyYAML>=6.0
 rich>=13.7
+phonenumbers>=8.13   # offline phone number parsing/validation for the phone_lookup module
 
 # Optional: enables the `holehe` module (email-registration checks across
 # 120+ sites). Omit these two lines and it's silently skipped.

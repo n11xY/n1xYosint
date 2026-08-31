@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "n1xYosint"
 version = "0.1.0"
-description = "Modular, CLI-first OSINT reconnaissance framework for username/email intelligence gathering."
+description = "Modular, CLI-first OSINT reconnaissance framework for username/email/phone intelligence gathering."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
@@ -14,6 +14,7 @@ dependencies = [
     "aiohttp-socks>=0.9",
     "PyYAML>=6.0",
     "rich>=13.7",
+    "phonenumbers>=8.13",
 ]
 
 [project.optional-dependencies]
