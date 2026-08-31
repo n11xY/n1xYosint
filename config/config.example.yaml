@@ -86,6 +86,12 @@ sources:
   hunter_io:
     api_key: null                # https://hunter.io/api-keys (free tier available)
 
+  abstractapi_phone:
+    api_key: null                # https://www.abstractapi.com/api/phone-validation-api (free: 250/mo)
+                                  # live carrier/line-type/location lookup, complements phone_lookup's
+                                  # offline check -- NOT live-verified by the maintainer, see the
+                                  # module's docstring before relying on it
+
   emailrep:
     api_key: null                # optional: https://emailrep.io/key -- works unauthenticated too
 

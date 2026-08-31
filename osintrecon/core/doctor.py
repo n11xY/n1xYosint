@@ -43,6 +43,7 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "hunter_io": ["api.hunter.io"],
     "search_api": ["api.bing.microsoft.com"],
     "twitter_api": ["api.twitter.com"],
+    "abstractapi_phone": ["phonevalidation.abstractapi.com"],
 }
 
 DNS_CONCURRENCY = 20

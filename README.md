@@ -96,6 +96,7 @@ configuration.
 | `twitch_api` / `steam_api` | social | username | key required (free), upgrades the heuristic site check to a confirmed API result |
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
 | `phone_lookup` | phone | phone | free, no key, no API call — offline validity/country/carrier/line-type via libphonenumber |
+| `abstractapi_phone` | phone | phone | key required (free tier), live carrier/line-type/location lookup — **not live-verified**, see the module's docstring |
 | `search_api` | search-engine | username, email, phone | key required, disabled by default |
 | `twitter_api` | social | username | key required, disabled by default (paid API tier) |
 | `holehe` | social | email | optional: `pip install -e ".[holehe]"` — bridges to the [holehe](https://github.com/megadose/holehe) project for registration checks across 120+ sites |
