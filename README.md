@@ -134,12 +134,6 @@ Found a vulnerability? Please don't open a public issue — see
 Built by [n1xY](https://github.com/n11xY), with development assistance
 from Claude (Anthropic).
 
-## Star History
-
-<a href="https://star-history.com/#n11xY/n1xYosint&Date">
-  <img src="https://api.star-history.com/svg?repos=n11xY/n1xYosint&type=Date" alt="Star History Chart" width="600">
-</a>
-
 ## License
 
 GPLv3 — see [LICENSE](LICENSE). Use it, modify it, ship it, just keep it
