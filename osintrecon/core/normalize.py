@@ -30,7 +30,15 @@ PHONE_CANDIDATE_RE = re.compile(r"^\+[\d\s\-.()]{7,20}$")
 # for most of the world. USERNAME_RE already rejects anything with a
 # space, so this never takes a real username away from that branch -- it
 # only classifies input that was always going to be rejected otherwise.
-NAME_RE = re.compile(r"^[^\W\d_][^\W\d_'\-]*(\s+[^\W\d_][^\W\d_'\-]*)+$")
+# NOTE: apostrophe/hyphen must be matched via alternation, not stuffed
+# inside a [^\W\d_...] negated class -- characters listed inside a
+# negated class are excluded, not allowed, so "[^\W\d_'\-]" (an earlier
+# version of this regex) silently rejected "O'Brien" and "Anne-Marie"
+# despite the comment above claiming otherwise. Caught by the test suite,
+# not by manual testing, since only ASCII/Unicode-letter names had been
+# tried by hand.
+_NAME_WORD = r"[^\W\d_](?:[^\W\d_]|['\-])*"
+NAME_RE = re.compile(rf"^{_NAME_WORD}(\s+{_NAME_WORD})+$")
 
 
 @dataclass
