@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 import time
 from pathlib import Path
@@ -46,6 +47,17 @@ class ResponseCache:
             self._conn = sqlite3.connect(str(resolved), check_same_thread=False)
             self._conn.executescript(SCHEMA)
             self._conn.commit()
+            # The cache stores full response bodies -- breach records, profile
+            # data, anything a source returned -- so it shouldn't be readable
+            # by other accounts on a shared machine (this tool explicitly
+            # targets Kali-style multi-tool boxes). chmod runs every time,
+            # not just on first create, so it also self-heals a cache file
+            # left world-readable by a version of this tool from before this
+            # fix. No-op-ish on Windows (only the read-only bit applies there).
+            try:
+                os.chmod(resolved, 0o600)
+            except OSError:
+                pass
 
     def get(self, source: str, method: str, url: str, extra: str = "") -> Optional[dict[str, Any]]:
         if not self.enabled or self._conn is None:

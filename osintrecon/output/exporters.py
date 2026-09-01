@@ -52,13 +52,28 @@ CSV_FIELDS = [
     "status", "confidence", "title", "source_url", "timestamp", "hop",
 ]
 
+# CSV formula injection (CWE-1236): a cell whose text starts with one of
+# these characters is interpreted as a formula by Excel/Sheets when the
+# file is opened, not as literal text (e.g. a search-result title of
+# "=HYPERLINK(...)" or "@SUM(...)"). title/source_url come from live,
+# attacker-influenced sources (any indexed web page controls its own
+# title), and identifier_value can start with "=" too (EMAIL_RE permits
+# it), so this needs handling at export time, not upstream.
+_CSV_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_csv_cell(value):
+    if isinstance(value, str) and value.startswith(_CSV_FORMULA_TRIGGERS):
+        return "'" + value
+    return value
+
 
 def export_csv(result: RunResult, path: str) -> None:
     with open(path, "w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=CSV_FIELDS, extrasaction="ignore")
         writer.writeheader()
         for f in result.findings:
-            row = _finding_to_dict(f)
+            row = {k: _sanitize_csv_cell(v) for k, v in _finding_to_dict(f).items()}
             writer.writerow(row)
 
 
