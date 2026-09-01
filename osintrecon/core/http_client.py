@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -135,6 +136,15 @@ class AsyncHttpClient:
         if not self.save_evidence or not self.evidence_dir:
             return None
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
+        # Evidence is raw captured response bodies -- breach data, profile
+        # PII, whatever a source returned -- so the directory and each file
+        # shouldn't be readable by other accounts on a shared machine (this
+        # tool explicitly targets Kali-style multi-tool boxes). No-op-ish on
+        # Windows (only the read-only bit applies there).
+        try:
+            os.chmod(self.evidence_dir, 0o700)
+        except OSError:
+            pass
         fname = f"{source}_{uuid.uuid4().hex[:10]}.json"
         path = self.evidence_dir / fname
         payload = {
@@ -146,6 +156,10 @@ class AsyncHttpClient:
             "captured_at": time.time(),
         }
         path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
         return str(path)
 
     async def request(

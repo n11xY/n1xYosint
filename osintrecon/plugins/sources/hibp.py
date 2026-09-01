@@ -9,6 +9,7 @@ For a free alternative with no subscription, see xposedornot.py.
 from __future__ import annotations
 
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -31,7 +32,7 @@ class HIBPPlugin(SourcePlugin):
         return breaches + pastes
 
     async def _fetch_breaches(self, identifier: Identifier, headers: dict) -> list[Finding]:
-        url = BREACH_URL.format(identifier.value)
+        url = BREACH_URL.format(quote(identifier.value, safe=""))
         resp = await self.http.get(self.name, url, headers=headers, expected_statuses={404, 429})
 
         if resp.error is not None:
@@ -77,7 +78,7 @@ class HIBPPlugin(SourcePlugin):
         return findings
 
     async def _fetch_pastes(self, identifier: Identifier, headers: dict) -> list[Finding]:
-        url = PASTE_URL.format(identifier.value)
+        url = PASTE_URL.format(quote(identifier.value, safe=""))
         resp = await self.http.get(self.name, url, headers=headers, expected_statuses={404, 429})
 
         # Errors here are reported but don't duplicate the breach endpoint's

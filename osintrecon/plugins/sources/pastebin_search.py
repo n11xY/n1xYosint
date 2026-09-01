@@ -6,6 +6,7 @@ searchable, and never accesses Pastebin content behind any access control.
 from __future__ import annotations
 
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -20,7 +21,7 @@ class PastebinSearchPlugin(SourcePlugin):
     description: ClassVar[str] = "Searches public paste dumps (via psbdmp.ws) for keyword mentions."
 
     async def run(self, identifier: Identifier) -> list[Finding]:
-        url = SEARCH_URL.format(identifier.value)
+        url = SEARCH_URL.format(quote(identifier.value, safe=""))
         resp = await self.http.get(self.name, url, expected_statuses={404})
 
         if resp.error is not None:

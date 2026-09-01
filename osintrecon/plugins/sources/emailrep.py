@@ -13,6 +13,7 @@ Config:
 from __future__ import annotations
 
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -27,7 +28,7 @@ class EmailRepPlugin(SourcePlugin):
     description: ClassVar[str] = "Queries the EmailRep.io API for reputation/exposure signal on an email address."
 
     async def run(self, identifier: Identifier) -> list[Finding]:
-        url = API_URL.format(identifier.value)
+        url = API_URL.format(quote(identifier.value, safe=""))
         headers = {}
         api_key = self.config.get("api_key")
         if api_key:
