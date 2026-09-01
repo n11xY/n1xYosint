@@ -134,6 +134,11 @@ pip install -e ".[dev]"
 pytest
 ```
 
+## Credits
+
+Built by [n1xY](https://github.com/n11xY), with development assistance
+from Claude (Anthropic).
+
 ## License
 
 GPLv3 — see [LICENSE](LICENSE). Use it, modify it, ship it, just keep it
