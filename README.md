@@ -5,9 +5,11 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/n11xY/n1xYosint/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/n11xY/n1xYosint/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="License" src="https://img.shields.io/github/license/n11xY/n1xYosint">
   <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-blue">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Kali%20Linux-557C94">
+  <a href="https://github.com/n11xY/n1xYosint/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/n11xY/n1xYosint?style=social"></a>
 </p>
 
 Point it at a username, email, or phone number and it fans out across
@@ -18,6 +20,10 @@ actually is, and hands you a report — terminal, JSON, CSV, or TXT.
 Every result is either **confirmed** (an official API said so) or
 **probable** (a page-content heuristic said so) — the two are never mixed
 together silently, so you always know how much to trust a hit.
+
+**Contents:** [Features](#features) · [Scope](#scope) · [Install](#install)
+· [Usage](#usage) · [Source modules](#source-modules) ·
+[Contributing](#contributing) · [Security](#security) · [License](#license)
 
 ## Features
 
@@ -103,30 +109,6 @@ configuration.
 
 Key-gated modules are skipped silently when unconfigured.
 
-## Writing a plugin
-
-```python
-from osintrecon.plugins.base import SourcePlugin
-from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
-
-class MyPlugin(SourcePlugin):
-    name = "my_source"
-    category = "social"
-    accepts = {IdentifierType.USERNAME}
-
-    async def run(self, identifier: Identifier) -> list[Finding]:
-        resp = await self.http.get(self.name, f"https://example.com/{identifier.value}")
-        if resp.status != 200:
-            return []
-        return [Finding(
-            source=self.name, identifier=identifier, status=MatchStatus.CONFIRMED,
-            source_url=resp.url, title="Found", category=self.category,
-        )]
-```
-
-Drop the file in `osintrecon/plugins/sources/` (or point `plugins_dir` in
-config at an external directory) — the registry picks it up automatically.
-
 ## Tests
 
 ```bash
@@ -134,10 +116,29 @@ pip install -e ".[dev]"
 pytest
 ```
 
+## Contributing
+
+Bug reports, feature requests, and PRs are welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, the plugin API, and the
+verification bar a new `username_sites` entry needs to clear before it's
+merged (every existing one is individually curl-tested against a real
+and a nonexistent account — see [Features](#features)).
+
+## Security
+
+Found a vulnerability? Please don't open a public issue — see
+[SECURITY.md](SECURITY.md) for how to report it privately.
+
 ## Credits
 
 Built by [n1xY](https://github.com/n11xY), with development assistance
 from Claude (Anthropic).
+
+## Star History
+
+<a href="https://star-history.com/#n11xY/n1xYosint&Date">
+  <img src="https://api.star-history.com/svg?repos=n11xY/n1xYosint&type=Date" alt="Star History Chart" width="600">
+</a>
 
 ## License
 

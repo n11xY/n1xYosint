@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a new source, flag, or capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's missing, or what's the problem?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: If this is a new source/plugin, note whether it needs an API key and whether it's a legitimate, documented API (see the Scope section in the README — no auth bypass, no scraping behind access controls).
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

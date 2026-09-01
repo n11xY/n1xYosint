@@ -1,0 +1,50 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected instead, too.
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      description: The full `n1xyosint ...` invocation (redact any real target identifiers).
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`n1xyosint --doctor` output"
+      description: Run it and paste the output — it catches most config/connectivity issues before they turn into a bug report.
+      render: text
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: "`git rev-parse HEAD` or the release tag."
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      description: "`python3 --version`"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+    validations:
+      required: true
