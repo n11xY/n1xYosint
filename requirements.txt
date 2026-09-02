@@ -8,3 +8,9 @@ phonenumbers>=8.13   # offline phone number parsing/validation for the phone_loo
 # 120+ sites). Omit these two lines and it's silently skipped.
 # holehe
 # httpx
+
+# Optional: enables avatar_correlation.py (cross-references profile photos
+# collected by other modules for a near-identical match across otherwise
+# unlinked accounts). Omit these two lines and it's silently skipped.
+# Pillow>=10.0
+# imagehash>=4.3

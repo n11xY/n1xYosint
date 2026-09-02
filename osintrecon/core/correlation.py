@@ -10,6 +10,16 @@ Two identifiers are linked when:
 
 This is deliberately conservative: it links on exact/derived identifiers
 only, never on fuzzy name similarity, to keep false-positive correlation low.
+
+The one deliberate exception lives in avatar_correlation.py, not here: it
+compares profile-photo perceptual hashes and, on a near-identical match,
+feeds a synthetic Finding with the matched identifier already in
+discovered_identifiers -- which this engine then unions exactly like any
+other discovered identifier. That's a narrower exception than it looks:
+common names collide by coincidence constantly ("John Smith"), but two
+different real people having a near-pixel-identical photo essentially
+never happens by chance, so it's held to a strict Hamming-distance
+threshold and always reports PROBABLE, never CONFIRMED.
 """
 from __future__ import annotations
 

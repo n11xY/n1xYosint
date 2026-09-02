@@ -13,6 +13,7 @@ import asyncio
 import time
 from dataclasses import dataclass, field
 
+from osintrecon.core.avatar_correlation import find_avatar_matches
 from osintrecon.core.cache import ResponseCache
 from osintrecon.core.config import Config
 from osintrecon.core.correlation import CorrelationEngine
@@ -93,6 +94,15 @@ class Engine:
                 current_round = next_round if hop < max(1, depth) else []
 
             self.stats.enrichment_hops_completed = hop
+
+            # Cross-references collected avatar URLs (github/gravatar so far)
+            # for near-identical profile photos across otherwise-unlinked
+            # identifiers -- a silent no-op if Pillow/imagehash aren't
+            # installed (optional dependency, see avatar_correlation.py).
+            # Has to run before the http client/cache close, since it needs
+            # to fetch the images.
+            all_findings.extend(await find_avatar_matches(all_findings, http))
+
             cache.close()
 
         scored, duplicates_removed = dedup_and_score(all_findings)
