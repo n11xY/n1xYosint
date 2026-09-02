@@ -91,6 +91,8 @@ configuration.
 |---|---|---|---|
 | `username_sites` | social/various | username | 86-site database, `config/sites.json` |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
+| `github_commit_email` | code-hosting | username | free, no key — GitHub's commit search API; finds a real commit-author email even when it's hidden from the profile (optional GitHub PAT raises the search API's tighter 10/min rate limit) |
+| `wayback` | archive | url | free, no key — Internet Archive's CDX API; archive history for a discovered URL (e.g. a GitHub profile's linked blog) |
 | `roblox` / `minecraft` / `bluesky` / `anilist` | social | username | official public APIs |
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
 | `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |

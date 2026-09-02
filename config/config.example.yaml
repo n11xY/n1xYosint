@@ -43,6 +43,14 @@ sources:
     enabled: true
     api_key: null              # optional GitHub PAT, raises API rate limit (not required)
 
+  github_commit_email:
+    enabled: true
+    api_key: null              # optional GitHub PAT -- the commit search API has its own tight
+                                # rate limit (10/min unauthenticated), a token helps
+
+  wayback:
+    enabled: true               # free, no key -- Internet Archive's CDX API
+
   gitlab:
     enabled: true
 
