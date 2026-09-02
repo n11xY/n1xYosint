@@ -31,6 +31,7 @@ together silently, so you always know how much to trust a hit.
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
+- Optional avatar cross-correlation (`pip install -e ".[imagehash]"`) — flags a near-identical profile photo shared across otherwise-unlinked accounts (perceptual hash, always reported as probable, never merges identities automatically)
 - Multi-hop enrichment (`--depth`) — automatically investigates identifiers discovered along the way (an email pulled from a bio, say), with cycle protection and a configurable cap
 - Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
 - Async engine with configurable concurrency, retries, per-source rate limiting, SQLite response caching, and proxy support (HTTP or SOCKS5/Tor)

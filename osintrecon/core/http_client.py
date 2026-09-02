@@ -35,6 +35,13 @@ class HttpResponse:
     error: Optional[str] = None
     json_data: Any = None
     evidence_path: Optional[str] = None
+    # Raw response bytes, for binary content (e.g. avatar images for
+    # avatar_correlation.py) that .text's UTF-8 decode would corrupt.
+    # Reconstructed from the cached text on a cache hit -- fine for text
+    # responses, not meaningful for binary ones, but binary fetches always
+    # pass allow_cache=False (see avatar_correlation.py) so that path is
+    # never actually hit for them.
+    content: bytes = b""
 
     def json(self) -> Any:
         if self.json_data is not None:
@@ -190,6 +197,7 @@ class AsyncHttpClient:
                     url=url,
                     ok=200 <= cached["status_code"] < 400,
                     cached=True,
+                    content=(cached["body"] or "").encode("utf-8", errors="replace"),
                 )
 
         sem = self._semaphore_for(source)
@@ -229,6 +237,12 @@ class AsyncHttpClient:
                             await asyncio.sleep(delay)
                             continue
 
+                        # .read() first, then .text() -- aiohttp buffers the
+                        # body on first read, so this is one network read,
+                        # not two, and gives us both the raw bytes (needed
+                        # for binary content like images) and the decoded
+                        # text every other caller already relies on.
+                        raw = await resp.read()
                         text = await resp.text(errors="replace")
                         ok = resp.status < 400 or (expected_statuses and resp.status in expected_statuses)
                         response = HttpResponse(
@@ -237,6 +251,7 @@ class AsyncHttpClient:
                             headers=dict(resp.headers),
                             url=str(resp.url),
                             ok=bool(ok),
+                            content=raw,
                         )
                         if self.stats:
                             self.stats.requests_succeeded += 1

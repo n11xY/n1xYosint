@@ -18,8 +18,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+# Pillow/imagehash included here too (not just in the `imagehash` extra
+# below) so CI's `pip install -e ".[dev]"` actually exercises
+# test_avatar_correlation.py instead of it silently skipping everywhere.
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "Pillow>=10.0", "imagehash>=4.3"]
 holehe = ["holehe", "httpx"]
+imagehash = ["Pillow>=10.0", "imagehash>=4.3"]
 
 [project.scripts]
 n1xyosint = "osintrecon.cli:main"
