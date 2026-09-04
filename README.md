@@ -101,6 +101,10 @@ configuration.
 | `lichess` | social | username | free, no key — official Lichess API; discovers a linked Twitch channel |
 | `codewars` | code-hosting | username | free, no key — official Codewars API |
 | `speedrun_com` | social | username | free, no key — official speedrun.com API; discovers linked Twitch/YouTube usernames |
+| `dockerhub` | code-hosting | username | free, no key — official Docker Hub API |
+| `keybase` | profile-directory | username | free, no key — official Keybase lookup API |
+| `mastodon_social` | social | username | free, no key — official API, scoped to the mastodon.social instance specifically (Mastodon is federated, so this can't generalize to every instance) |
+| `scratch` | social | username | free, no key — official Scratch (MIT) API |
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
 | `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |
 | `gravatar` | profile-directory | email | |
