@@ -41,6 +41,8 @@
   {"name": "Wattpad", "category": "social", "url": "https://www.wattpad.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "AO3", "category": "social", "url": "https://archiveofourown.org/users/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Imgur", "category": "social", "url": "https://imgur.com/user/{}", "check": "message", "not_found_text": "The magic of the Internet"},
+  {"name": "Snapchat", "category": "social", "url": "https://www.snapchat.com/add/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Unsplash", "category": "social", "url": "https://unsplash.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "ArtStation", "category": "social", "url": "https://www.artstation.com/{}", "check": "message", "not_found_text": "ArtStation - Explore"},
   {"name": "Mastodon", "category": "social", "url": "https://mastodon.social/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Newgrounds", "category": "social", "url": "https://{}.newgrounds.com", "check": "status", "found_status": 200, "not_found_status": 404},
