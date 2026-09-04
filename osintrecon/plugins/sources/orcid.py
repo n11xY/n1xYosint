@@ -25,6 +25,7 @@ from osintrecon.plugins.base import SourcePlugin
 
 API_URL = "https://pub.orcid.org/v3.0/search"
 MAX_RESULTS = 5
+MAX_RESULTS_BY_DEPTH = {"quick": 2, "normal": MAX_RESULTS, "deep": 10}
 
 
 def _split_name(name: str) -> tuple[str, str]:
@@ -48,11 +49,14 @@ class OrcidPlugin(SourcePlugin):
     )
 
     async def run(self, identifier: Identifier) -> list[Finding]:
+        search_depth = self.config.get("search_depth", "normal")
+        max_results = MAX_RESULTS_BY_DEPTH.get(search_depth, MAX_RESULTS)
+
         results: list = []
         candidate_name = identifier.value
         resp = None
 
-        for candidate_name in name_variants.variants(identifier.value):
+        for candidate_name in name_variants.variants(identifier.value, deep=(search_depth == "deep")):
             given, family = _split_name(candidate_name)
             if not family:
                 return []  # ORCID's search needs at least a given+family split
@@ -80,7 +84,7 @@ class OrcidPlugin(SourcePlugin):
             return []
 
         findings = []
-        for item in results[:MAX_RESULTS]:
+        for item in results[:max_results]:
             orcid_id = (item.get("orcid-identifier") or {}).get("path")
             if not orcid_id:
                 continue

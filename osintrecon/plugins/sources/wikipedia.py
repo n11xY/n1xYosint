@@ -27,6 +27,7 @@ from osintrecon.plugins.base import SourcePlugin
 
 API_URL = "https://en.wikipedia.org/w/api.php"
 MAX_RESULTS = 3
+MAX_RESULTS_BY_DEPTH = {"quick": 1, "normal": MAX_RESULTS, "deep": 6}
 
 
 class WikipediaPlugin(SourcePlugin):
@@ -39,13 +40,16 @@ class WikipediaPlugin(SourcePlugin):
     )
 
     async def run(self, identifier: Identifier) -> list[Finding]:
+        search_depth = self.config.get("search_depth", "normal")
+        max_results = MAX_RESULTS_BY_DEPTH.get(search_depth, MAX_RESULTS)
+
         titles, descriptions, urls = [], [], []
 
-        for candidate_name in name_variants.variants(identifier.value):
+        for candidate_name in name_variants.variants(identifier.value, deep=(search_depth == "deep")):
             params = {
                 "action": "opensearch",
                 "search": candidate_name,
-                "limit": MAX_RESULTS,
+                "limit": max_results,
                 "namespace": 0,
                 "format": "json",
             }

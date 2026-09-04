@@ -20,7 +20,7 @@ from osintrecon.core.correlation import CorrelationEngine
 from osintrecon.core.entity_scoring import score_entities
 from osintrecon.core.http_client import AsyncHttpClient
 from osintrecon.core.logging_setup import get_logger
-from osintrecon.core.models import Entity, Finding, Identifier, RunStats
+from osintrecon.core.models import Entity, Finding, Identifier, IdentifierType, RunStats
 from osintrecon.core.scoring import process as dedup_and_score
 from osintrecon.plugins.base import SourcePlugin
 from osintrecon.plugins.registry import PluginRegistry
@@ -28,6 +28,7 @@ from osintrecon.plugins.registry import PluginRegistry
 log = get_logger("engine")
 
 DEFAULT_MAX_ENRICHMENT_IDENTIFIERS = 200
+SEARCH_DEPTH_CHOICES = {"quick", "normal", "deep"}
 
 
 @dataclass
@@ -43,11 +44,23 @@ class Engine:
         self.config = config
         self.stats = RunStats()
 
-    async def run(self, identifiers: list[Identifier], depth: int = 1) -> RunResult:
+    async def run(self, identifiers: list[Identifier], depth: int = 1, search_depth: str = "normal") -> RunResult:
         """Run the full pipeline. `depth` is how many enrichment rounds to do:
         1 = only the seed identifiers (default, matches prior behavior),
         2+ = also investigate identifiers discovered along the way, that many
-        rounds deep."""
+        rounds deep.
+
+        `search_depth` ("quick"/"normal"/"deep") is unrelated to `depth` --
+        it doesn't change how many enrichment rounds run, only how much each
+        NAME-accepting plugin (orcid/openalex/crossref/github_name_search/
+        wikipedia) does per round: how many results it caps at, and (in
+        "deep") an extra name-variant form it tries. Plugins never see the
+        global Config (registry.py hands each one only its own per-source
+        section), so this is injected directly into each NAME plugin's own
+        config dict below rather than threaded through Config."""
+        if search_depth not in SEARCH_DEPTH_CHOICES:
+            search_depth = "normal"
+
         cache = ResponseCache(
             path=self.config.get("cache.path"),
             ttl_seconds=self.config.get("cache.ttl_seconds", 86400),
@@ -71,6 +84,10 @@ class Engine:
             plugins = registry.instantiate_enabled()
             self.stats.sources_queried = len(plugins)
             log.info("loaded %d enabled source module(s): %s", len(plugins), ", ".join(p.name for p in plugins))
+
+            for plugin in plugins:
+                if IdentifierType.NAME in plugin.accepts:
+                    plugin.config["search_depth"] = search_depth
 
             overall_concurrency = asyncio.Semaphore(self.config.get("concurrency", 20))
             max_enrichment = self.config.get("max_enrichment_identifiers", DEFAULT_MAX_ENRICHMENT_IDENTIFIERS)

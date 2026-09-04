@@ -30,6 +30,7 @@ from osintrecon.plugins.base import SourcePlugin
 
 SEARCH_URL = "https://api.github.com/search/users"
 MAX_RESULTS = 5
+MAX_RESULTS_BY_DEPTH = {"quick": 2, "normal": MAX_RESULTS, "deep": 10}
 
 
 class GitHubNameSearchPlugin(SourcePlugin):
@@ -47,9 +48,12 @@ class GitHubNameSearchPlugin(SourcePlugin):
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
+        search_depth = self.config.get("search_depth", "normal")
+        max_results = MAX_RESULTS_BY_DEPTH.get(search_depth, MAX_RESULTS)
+
         items: list = []
-        for candidate_name in name_variants.variants(identifier.value):
-            params = {"q": f'"{candidate_name}" in:name', "per_page": MAX_RESULTS}
+        for candidate_name in name_variants.variants(identifier.value, deep=(search_depth == "deep")):
+            params = {"q": f'"{candidate_name}" in:name', "per_page": max_results}
             resp = await self.http.get(self.name, SEARCH_URL, headers=headers, params=params, expected_statuses={403, 422})
 
             if resp.error is not None:
@@ -83,6 +87,6 @@ class GitHubNameSearchPlugin(SourcePlugin):
                 discovered_identifiers=[Identifier(value=item["login"], type=IdentifierType.USERNAME)],
                 evidence_path=resp.evidence_path,
             )
-            for item in items[:MAX_RESULTS]
+            for item in items[:max_results]
             if item.get("login")
         ]

@@ -34,12 +34,28 @@ def ascii_fold(name: str) -> str:
     return " ".join(stripped.split())
 
 
-def variants(name: str) -> list[str]:
+def variants(name: str, deep: bool = False) -> list[str]:
     """The exact name, then (only if different) its ASCII-folded form.
     Order matters: callers should try index 0 first and only spend a
-    second request on index 1 if the first came back empty."""
+    second request on index 1 if the first came back empty.
+
+    When `deep=True` (the CLI's --search-depth deep), a third, bounded
+    form is added: the word order reversed ("Yonlu Ruzgar" from "Ruzgar
+    Yonlu") -- covers records indexed family-name-first. Still capped
+    (max 3 forms) and still tried only if the earlier forms came back
+    empty, so normal/quick-depth behavior (deep=False, the default) is
+    unchanged."""
     forms = [name]
     folded = ascii_fold(name)
     if folded and folded != name:
         forms.append(folded)
+
+    if deep:
+        base_for_swap = folded or name
+        words = base_for_swap.split()
+        if len(words) >= 2:
+            swapped = " ".join(reversed(words))
+            if swapped not in forms:
+                forms.append(swapped)
+
     return forms

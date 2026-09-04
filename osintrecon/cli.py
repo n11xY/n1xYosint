@@ -42,7 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
                          help="Run setup diagnostics (config, filesystem paths, DNS reachability "
                               "per source) and exit -- no identifiers needed")
     parser.add_argument("--export", action="append", default=[], metavar="FORMAT:PATH",
-                         help="Export results, e.g. --export json:out.json (repeatable; formats: json,csv,txt)")
+                         help="Export results, e.g. --export json:out.json "
+                              "(repeatable; formats: json,csv,txt,html,graph)")
     parser.add_argument("--save-evidence", action="store_true", help="Persist raw responses as evidence files")
     parser.add_argument("--proxy", help="Proxy URL, e.g. socks5h://127.0.0.1:9050 or http://127.0.0.1:8080")
     parser.add_argument("--concurrency", type=int, help="Max overall concurrent requests")
@@ -52,6 +53,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--depth", type=int, default=1, metavar="N",
                          help="Enrichment depth: also investigate identifiers discovered along the way "
                               "(e.g. an email found in a bio), this many rounds deep. Default 1 = seeds only.")
+    parser.add_argument("--search-depth", choices=["quick", "normal", "deep"], default="normal",
+                         help="How much each NAME-based source (orcid/openalex/crossref/"
+                              "github_name_search/wikipedia) does per identifier: result caps, and "
+                              "in 'deep' an extra name-order variant. Unrelated to --depth. Default: normal.")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase log verbosity (-v, -vv)")
     parser.add_argument("--log-file", help="Write full logs to this file")
     return parser
@@ -133,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     _apply_cli_overrides(config, args)
 
     engine = Engine(config)
-    result = asyncio.run(engine.run(normalization.identifiers, depth=args.depth))
+    result = asyncio.run(engine.run(normalization.identifiers, depth=args.depth, search_depth=args.search_depth))
     result.rejected_inputs = normalization.rejected
 
     console = Console()

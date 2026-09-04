@@ -21,6 +21,7 @@ from osintrecon.plugins.base import SourcePlugin
 
 API_URL = "https://api.openalex.org/authors"
 MAX_RESULTS = 5
+MAX_RESULTS_BY_DEPTH = {"quick": 2, "normal": MAX_RESULTS, "deep": 10}
 
 
 class OpenAlexPlugin(SourcePlugin):
@@ -33,11 +34,14 @@ class OpenAlexPlugin(SourcePlugin):
     )
 
     async def run(self, identifier: Identifier) -> list[Finding]:
+        search_depth = self.config.get("search_depth", "normal")
+        max_results = MAX_RESULTS_BY_DEPTH.get(search_depth, MAX_RESULTS)
+
         results: list = []
         resp = None
 
-        for candidate_name in name_variants.variants(identifier.value):
-            resp = await self.http.get(self.name, API_URL, params={"search": candidate_name, "per_page": MAX_RESULTS})
+        for candidate_name in name_variants.variants(identifier.value, deep=(search_depth == "deep")):
+            resp = await self.http.get(self.name, API_URL, params={"search": candidate_name, "per_page": max_results})
 
             if resp.error is not None:
                 return [Finding(
@@ -60,7 +64,7 @@ class OpenAlexPlugin(SourcePlugin):
             return []
 
         findings = []
-        for author in results[:MAX_RESULTS]:
+        for author in results[:max_results]:
             affiliations = author.get("affiliations") or []
             latest_institution = (affiliations[0].get("institution") or {}) if affiliations else {}
             orcid_url = author.get("orcid")
