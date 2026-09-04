@@ -46,6 +46,8 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "abstractapi_phone": ["phonevalidation.abstractapi.com"],
     "github_commit_email": ["api.github.com"],
     "wayback": ["web.archive.org"],
+    "telegram_api": ["api.telegram.org"],
+    "youtube_api": ["www.googleapis.com"],
 }
 
 DNS_CONCURRENCY = 20

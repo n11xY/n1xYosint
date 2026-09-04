@@ -68,7 +68,31 @@ against a real account is worse than not having the site at all — say so
 explicitly in the PR description, or don't submit it. `content`-check
 entries are inherently probabilistic (markup changes break them silently)
 and are reported as `PROBABLE`, never `CONFIRMED`, for exactly this
-reason.
+reason. `username_sites` also cross-checks every apparent match against
+a random decoy username on the same site before reporting it (see
+`osintrecon/plugins/sources/username_sites.py`) — if your new entry gets
+auto-downgraded to `UNCERTAIN` in your own testing, that's the mechanism
+working, not a bug to route around.
+
+**Some platforms genuinely have no reliable unauthenticated signal at
+all.** Diff the *entire* response (not just the one marker you expect)
+for a real account against a decoy, with the target string normalized
+out — some sites now render everything client-side and serve
+byte-identical HTML regardless of whether the account exists (Telegram's
+`t.me/{username}` and Threads' `threads.net/@{username}` both do this;
+Twitch looked the same at first glance but turned out to have a real,
+different `og:description` for real vs. nonexistent channels once
+checked properly). If you can't find any distinguishing signal:
+1. Check whether the platform has an official API instead (see
+   `telegram_api.py`/`youtube_api.py` for the pattern: key-gated, clearly
+   marked `MatchStatus.CONFIRMED`, and honestly labeled **not
+   live-verified** in the docstring if you don't have a test key).
+2. If no API exists either, don't remove the `username_sites` entry
+   outright if the project wants to keep a placeholder for it — instead
+   set `not_found_text` to something that's *always* present in the
+   response (e.g. Threads' login-wall boilerplate), so the check safely
+   resolves to "not found" every time instead of lying. Say clearly in
+   the PR why the entry can never produce a real match.
 
 ## Reporting issues
 

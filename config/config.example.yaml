@@ -95,6 +95,16 @@ sources:
   steam_api:
     api_key: null                # https://steamcommunity.com/dev/apikey (free)
 
+  telegram_api:
+    api_key: null                # bot token from @BotFather on Telegram (free, /newbot)
+                                  # official Bot API getChat -- NOT live-verified, see the
+                                  # module's docstring before relying on it for user accounts
+
+  youtube_api:
+    api_key: null                # Google Cloud API key with "YouTube Data API v3" enabled
+                                  # (console.cloud.google.com, free tier) -- NOT live-verified,
+                                  # see the module's docstring
+
   hunter_io:
     api_key: null                # https://hunter.io/api-keys (free tier available)
 
