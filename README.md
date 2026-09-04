@@ -30,15 +30,17 @@ together silently, so you always know how much to trust a hit.
 - 93-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
-- Name search across GitHub, Wikipedia, and three academic APIs (ORCID, OpenAlex, Crossref) — every one automatically retries with an ASCII-folded form (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u) when the exact name returns nothing, so diacritic names (Turkish and beyond) aren't silently missed
+- Name search across GitHub, Wikipedia, three academic APIs (ORCID, OpenAlex, Crossref), and a no-API LinkedIn/X manual-search-link generator — every API-backed one automatically retries with an ASCII-folded form (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u) when the exact name returns nothing, so diacritic names (Turkish and beyond) aren't silently missed
+- `--search-depth {quick,normal,deep}` — scales how many results each name-search source keeps (and, in `deep`, tries one more name-order variant); independent of `--depth` (enrichment hops), default `normal` matches prior behavior exactly
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity, with a per-entity confidence score (very strong/strong/possible/weak/very weak) and a plain-language reasons list (independent sources, confirmed findings, shared metadata, matching avatar) — never merges or drops anything, only annotates
+- Identity graph export (`--export graph:...`) — the same correlated entities as a typed nodes/edges JSON graph (Person/Organization/University/Publication nodes; sameAs/mentionedBy/worksAt/memberOf/authorOf/linksTo edges), derived from one run's results, no separate graph database
 - Optional avatar cross-correlation (`pip install -e ".[imagehash]"`) — flags a near-identical profile photo shared across otherwise-unlinked accounts (perceptual hash, always reported as probable, never merges identities automatically)
 - Multi-hop enrichment (`--depth`) — automatically investigates identifiers discovered along the way (an email pulled from a bio, say), with cycle protection and a configurable cap
 - Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
 - Async engine with configurable concurrency, retries, per-source rate limiting, SQLite response caching, and proxy support (HTTP or SOCKS5/Tor)
 - `--doctor` diagnostics — checks config, filesystem paths, and DNS reachability for every enabled source before you run a real scan
 - Plugin architecture — drop a file in `plugins/sources/`, no core changes needed
-- JSON / CSV / TXT export, evidence capture, full source attribution on every finding
+- JSON / CSV / TXT / HTML / graph export, evidence capture, full source attribution on every finding
 
 ## Scope
 
@@ -77,6 +79,11 @@ n1xyosint -u johndoe -c config/config.yaml --save-evidence -vv \
 # in a bio, or a full name pulled from a Gravatar profile -- two rounds deep
 n1xyosint -u johndoe --depth 2
 
+# deeper name search: higher result caps on orcid/openalex/crossref/
+# github_name_search/wikipedia, plus an extra name-order variant --
+# unrelated to --depth above. Export an HTML report and a JSON identity graph.
+n1xyosint -n "John Doe" --search-depth deep --export html:report.html --export graph:graph.json
+
 # check setup before running a real scan: config, filesystem paths, and
 # DNS reachability for every enabled source's domain(s)
 n1xyosint --doctor
@@ -111,6 +118,7 @@ configuration.
 | `orcid` | academic | name | free, no key — official ORCID public API; matches a registered researcher iD, always `uncertain` |
 | `openalex` | academic | name | free, no key — official OpenAlex API; matches an indexed researcher (works/citation counts, institution), discovers a linked ORCID profile URL for `--depth` enrichment, always `uncertain` |
 | `crossref` | academic | name | free, no key — official Crossref API; surfaces matching DOI-bearing publications, always `uncertain` |
+| `dork_links` | search-lead | name | free, no key, no network call at all — builds ready-to-click `site:linkedin.com/in` / `site:x.com` search-engine URLs for you to open yourself; exists because general web search (Google/Bing/Brave) isn't integrated (see below), always `uncertain`, its own `search-lead` category so it never reads as a verified match |
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
 | `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |
 | `gravatar` | profile-directory | email | |
@@ -124,7 +132,7 @@ configuration.
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
 | `phone_lookup` | phone | phone | free, no key, no API call — offline validity/country/carrier/line-type via libphonenumber |
 | `abstractapi_phone` | phone | phone | key required (free tier), live carrier/line-type/location lookup — **not live-verified**, see the module's docstring |
-| `search_api` | search-engine | username, email, phone, name | key required (free tier), disabled by default — Google Custom Search API, supports dork operators (`site:`, `intitle:`, ...); **not live-verified**, see the module's docstring |
+| `search_api` | search-engine | username, email, phone, name | key required (free tier), disabled by default — Google Custom Search API; the query itself is just the quoted identifier value (no `site:`/`intitle:` dork templating in this plugin, though the underlying Google API accepts those operators if you type them directly into a query); **not live-verified**, see the module's docstring |
 | `twitter_api` | social | username | key required, disabled by default (paid API tier) |
 | `holehe` | social | email | optional: `pip install -e ".[holehe]"` — bridges to the [holehe](https://github.com/megadose/holehe) project for registration checks across 120+ sites |
 

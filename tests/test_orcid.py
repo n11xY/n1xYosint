@@ -89,6 +89,39 @@ def test_request_error_returns_error_finding():
     assert findings[0].status == MatchStatus.ERROR
 
 
+def test_quick_search_depth_caps_results_below_normal():
+    many_results = {"result": [{"orcid-identifier": {"path": f"0000-0000-0000-{i:04d}"}} for i in range(8)]}
+    http = FakeHttp([FakeResp(data=many_results)])
+    plugin = OrcidPlugin(config={"search_depth": "quick"}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 2  # quick cap, below the normal (5) and raw result count (8)
+
+
+def test_deep_search_depth_allows_more_results_than_normal():
+    many_results = {"result": [{"orcid-identifier": {"path": f"0000-0000-0000-{i:04d}"}} for i in range(8)]}
+    http = FakeHttp([FakeResp(data=many_results)])
+    plugin = OrcidPlugin(config={"search_depth": "deep"}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 8  # deep cap (10) exceeds the raw result count, so nothing is trimmed
+
+
+def test_omitted_search_depth_matches_todays_default_normal_cap():
+    many_results = {"result": [{"orcid-identifier": {"path": f"0000-0000-0000-{i:04d}"}} for i in range(8)]}
+    http = FakeHttp([FakeResp(data=many_results)])
+    plugin = OrcidPlugin(config={}, http=http)  # no search_depth key at all
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 5  # unchanged from this plugin's pre-existing MAX_RESULTS
+
+
 def test_non_200_status_returns_error_finding():
     http = FakeHttp([FakeResp(status=500, data={})])
     plugin = OrcidPlugin(config={}, http=http)

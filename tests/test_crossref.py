@@ -96,6 +96,36 @@ def test_no_match_returns_empty_list():
     assert len(http.calls) == 1
 
 
+def test_quick_search_depth_caps_results_below_normal():
+    http = FakeHttp([FakeResp(data={"message": {"items": [_work() for _ in range(6)]}})])
+    plugin = CrossrefPlugin(config={"search_depth": "quick"}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 1  # quick cap, below normal (3)
+
+
+def test_deep_search_depth_allows_more_results_than_normal():
+    http = FakeHttp([FakeResp(data={"message": {"items": [_work() for _ in range(6)]}})])
+    plugin = CrossrefPlugin(config={"search_depth": "deep"}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 6  # deep cap (6) covers the full raw result count
+
+
+def test_omitted_search_depth_matches_todays_default_normal_cap():
+    http = FakeHttp([FakeResp(data={"message": {"items": [_work() for _ in range(6)]}})])
+    plugin = CrossrefPlugin(config={}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 3  # unchanged from this plugin's pre-existing MAX_RESULTS
+
+
 def test_request_error_returns_error_finding():
     http = FakeHttp([FakeResp(error="timeout")])
     plugin = CrossrefPlugin(config={}, http=http)

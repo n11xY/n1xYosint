@@ -26,6 +26,7 @@ from osintrecon.plugins.base import SourcePlugin
 
 API_URL = "https://api.crossref.org/works"
 MAX_RESULTS = 3
+MAX_RESULTS_BY_DEPTH = {"quick": 1, "normal": MAX_RESULTS, "deep": 6}
 
 
 class CrossrefPlugin(SourcePlugin):
@@ -38,13 +39,16 @@ class CrossrefPlugin(SourcePlugin):
     )
 
     async def run(self, identifier: Identifier) -> list[Finding]:
+        search_depth = self.config.get("search_depth", "normal")
+        max_results = MAX_RESULTS_BY_DEPTH.get(search_depth, MAX_RESULTS)
+
         items: list = []
         resp = None
 
-        for candidate_name in name_variants.variants(identifier.value):
+        for candidate_name in name_variants.variants(identifier.value, deep=(search_depth == "deep")):
             params = {
                 "query.author": candidate_name,
-                "rows": MAX_RESULTS,
+                "rows": max_results,
                 "select": "title,DOI,published,container-title,author",
             }
             resp = await self.http.get(self.name, API_URL, params=params)
@@ -70,7 +74,7 @@ class CrossrefPlugin(SourcePlugin):
             return []
 
         findings = []
-        for work in items[:MAX_RESULTS]:
+        for work in items[:max_results]:
             title = (work.get("title") or [None])[0]
             if not title:
                 continue

@@ -91,6 +91,36 @@ def test_no_match_returns_empty_list():
     assert len(http.calls) == 1
 
 
+def test_quick_search_depth_caps_results_below_normal():
+    http = FakeHttp([FakeResp(data={"results": [_author() for _ in range(8)]})])
+    plugin = OpenAlexPlugin(config={"search_depth": "quick"}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 2
+
+
+def test_deep_search_depth_allows_more_results_than_normal():
+    http = FakeHttp([FakeResp(data={"results": [_author() for _ in range(8)]})])
+    plugin = OpenAlexPlugin(config={"search_depth": "deep"}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 8
+
+
+def test_omitted_search_depth_matches_todays_default_normal_cap():
+    http = FakeHttp([FakeResp(data={"results": [_author() for _ in range(8)]})])
+    plugin = OpenAlexPlugin(config={}, http=http)
+    identifier = Identifier(value="Yann LeCun", type=IdentifierType.NAME)
+
+    findings = asyncio.run(plugin.run(identifier))
+
+    assert len(findings) == 5
+
+
 def test_request_error_returns_error_finding():
     http = FakeHttp([FakeResp(error="timeout")])
     plugin = OpenAlexPlugin(config={}, http=http)
