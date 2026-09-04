@@ -105,6 +105,8 @@ configuration.
 | `keybase` | profile-directory | username | free, no key — official Keybase lookup API |
 | `mastodon_social` | social | username | free, no key — official API, scoped to the mastodon.social instance specifically (Mastodon is federated, so this can't generalize to every instance) |
 | `scratch` | social | username | free, no key — official Scratch (MIT) API |
+| `github_name_search` | code-hosting | name | free, no key — GitHub's user-search API (`in:name`); finds accounts whose display name matches, always `uncertain` (a name match alone is never proof of identity), discovers each matched username for `--depth` enrichment |
+| `wikipedia` | profile-directory | name | free, no key — official OpenSearch API; flags a matching Wikipedia article for a notable public figure, always `uncertain` for the same reason |
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
 | `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |
 | `gravatar` | profile-directory | email | |

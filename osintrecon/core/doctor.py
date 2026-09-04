@@ -58,6 +58,8 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "keybase": ["keybase.io"],
     "mastodon_social": ["mastodon.social"],
     "scratch": ["api.scratch.mit.edu"],
+    "github_name_search": ["api.github.com"],
+    "wikipedia": ["en.wikipedia.org"],
 }
 
 DNS_CONCURRENCY = 20
