@@ -54,6 +54,10 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "lichess": ["lichess.org"],
     "codewars": ["www.codewars.com"],
     "speedrun_com": ["www.speedrun.com"],
+    "dockerhub": ["hub.docker.com"],
+    "keybase": ["keybase.io"],
+    "mastodon_social": ["mastodon.social"],
+    "scratch": ["api.scratch.mit.edu"],
 }
 
 DNS_CONCURRENCY = 20
