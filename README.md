@@ -27,7 +27,7 @@ together silently, so you always know how much to trust a hit.
 
 ## Features
 
-- 86-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
+- 91-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
 - Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
@@ -90,7 +90,7 @@ configuration.
 
 | Module | Category | Identifier | Notes |
 |---|---|---|---|
-| `username_sites` | social/various | username | 86-site database, `config/sites.json` |
+| `username_sites` | social/various | username | 91-site database (`config/sites.json`); every apparent match is cross-checked against a random nonexistent decoy username on the same site before being reported, downgrading to `uncertain` if the decoy also "matches" (site's signal isn't reliable right now) |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
 | `github_commit_email` | code-hosting | username | free, no key — GitHub's commit search API; finds a real commit-author email even when it's hidden from the profile (optional GitHub PAT raises the search API's tighter 10/min rate limit) |
 | `wayback` | archive | url | free, no key — Internet Archive's CDX API; archive history for a discovered URL (e.g. a GitHub profile's linked blog) |
