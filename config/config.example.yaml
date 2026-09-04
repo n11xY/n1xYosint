@@ -58,7 +58,9 @@ sources:
     enabled: true
 
   pastebin_search:
-    enabled: true
+    enabled: false               # psbdmp.ws has no DNS record as of this writing (confirmed via
+                                  # multiple public resolvers) -- the site appears to be gone, not
+                                  # a transient outage. Set true to re-enable if it ever comes back.
 
   xposedornot:
     enabled: true               # free, no key needed -- HIBP alternative (breach exposure only)

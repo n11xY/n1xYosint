@@ -40,6 +40,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "sources": {
         # per-source enable/disable + credentials; merged with plugin defaults
+        "pastebin_search": {
+            # psbdmp.ws has no DNS record as of this writing (confirmed via
+            # multiple public resolvers) -- looks gone, not a transient
+            # outage. Disabled by default so it doesn't produce a noisy
+            # "request failed" error on every run; set true in your own
+            # config.yaml to re-enable if the site ever comes back.
+            "enabled": False,
+        },
     },
     "plugins_dir": None,  # extra directory to load third-party plugins from
 }
