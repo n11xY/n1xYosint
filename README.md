@@ -30,7 +30,8 @@ together silently, so you always know how much to trust a hit.
 - 93-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
-- Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity
+- Name search across GitHub, Wikipedia, and three academic APIs (ORCID, OpenAlex, Crossref) — every one automatically retries with an ASCII-folded form (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u) when the exact name returns nothing, so diacritic names (Turkish and beyond) aren't silently missed
+- Cross-identifier correlation — links usernames, emails, and discovered profile URLs back into one entity, with a per-entity confidence score (very strong/strong/possible/weak/very weak) and a plain-language reasons list (independent sources, confirmed findings, shared metadata, matching avatar) — never merges or drops anything, only annotates
 - Optional avatar cross-correlation (`pip install -e ".[imagehash]"`) — flags a near-identical profile photo shared across otherwise-unlinked accounts (perceptual hash, always reported as probable, never merges identities automatically)
 - Multi-hop enrichment (`--depth`) — automatically investigates identifiers discovered along the way (an email pulled from a bio, say), with cycle protection and a configurable cap
 - Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
@@ -107,6 +108,9 @@ configuration.
 | `scratch` | social | username | free, no key — official Scratch (MIT) API |
 | `github_name_search` | code-hosting | name | free, no key — GitHub's user-search API (`in:name`); finds accounts whose display name matches, always `uncertain` (a name match alone is never proof of identity), discovers each matched username for `--depth` enrichment |
 | `wikipedia` | profile-directory | name | free, no key — official OpenSearch API; flags a matching Wikipedia article for a notable public figure, always `uncertain` for the same reason |
+| `orcid` | academic | name | free, no key — official ORCID public API; matches a registered researcher iD, always `uncertain` |
+| `openalex` | academic | name | free, no key — official OpenAlex API; matches an indexed researcher (works/citation counts, institution), discovers a linked ORCID profile URL for `--depth` enrichment, always `uncertain` |
+| `crossref` | academic | name | free, no key — official Crossref API; surfaces matching DOI-bearing publications, always `uncertain` |
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
 | `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |
 | `gravatar` | profile-directory | email | |

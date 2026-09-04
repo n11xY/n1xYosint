@@ -12,11 +12,16 @@ keyword hit isn't proof of identity").
 
 Live-verified: searching "Linus Torvalds" returns his article; a random
 nonexistent name returns an empty result set, not an error.
+
+Tries the exact name first; if that returns no titles, retries once
+with the ASCII-folded form (name_variants.py) -- OpenSearch's prefix
+matching is not reliably diacritic-tolerant for names like Turkish ones.
 """
 from __future__ import annotations
 
 from typing import ClassVar
 
+from osintrecon.core import name_variants
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
@@ -34,34 +39,39 @@ class WikipediaPlugin(SourcePlugin):
     )
 
     async def run(self, identifier: Identifier) -> list[Finding]:
-        params = {
-            "action": "opensearch",
-            "search": identifier.value,
-            "limit": MAX_RESULTS,
-            "namespace": 0,
-            "format": "json",
-        }
-        resp = await self.http.get(self.name, API_URL, params=params)
+        titles, descriptions, urls = [], [], []
 
-        if resp.error is not None:
-            return [Finding(
-                source=self.name, identifier=identifier, status=MatchStatus.ERROR,
-                source_url=API_URL, title="Wikipedia API request failed", category=self.category,
-                metadata={"error": resp.error},
-            )]
-        if resp.status != 200:
-            return [Finding(
-                source=self.name, identifier=identifier, status=MatchStatus.ERROR,
-                source_url=API_URL, title=f"Wikipedia API returned {resp.status}", category=self.category,
-                metadata={"http_status": resp.status},
-            )]
+        for candidate_name in name_variants.variants(identifier.value):
+            params = {
+                "action": "opensearch",
+                "search": candidate_name,
+                "limit": MAX_RESULTS,
+                "namespace": 0,
+                "format": "json",
+            }
+            resp = await self.http.get(self.name, API_URL, params=params)
 
-        data = resp.json()
-        # OpenSearch's response is a positional array, not an object:
-        # [query, [titles], [descriptions], [urls]].
-        if not isinstance(data, list) or len(data) < 4:
-            return []
-        titles, descriptions, urls = data[1] or [], data[2] or [], data[3] or []
+            if resp.error is not None:
+                return [Finding(
+                    source=self.name, identifier=identifier, status=MatchStatus.ERROR,
+                    source_url=API_URL, title="Wikipedia API request failed", category=self.category,
+                    metadata={"error": resp.error},
+                )]
+            if resp.status != 200:
+                return [Finding(
+                    source=self.name, identifier=identifier, status=MatchStatus.ERROR,
+                    source_url=API_URL, title=f"Wikipedia API returned {resp.status}", category=self.category,
+                    metadata={"http_status": resp.status},
+                )]
+
+            data = resp.json()
+            # OpenSearch's response is a positional array, not an object:
+            # [query, [titles], [descriptions], [urls]].
+            if not isinstance(data, list) or len(data) < 4:
+                return []
+            titles, descriptions, urls = data[1] or [], data[2] or [], data[3] or []
+            if titles:
+                break  # exact form matched -- no need to try the ASCII-folded variant
 
         return [
             Finding(

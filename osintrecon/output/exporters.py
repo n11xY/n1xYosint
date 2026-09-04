@@ -39,6 +39,8 @@ def export_json(result: RunResult, path: str) -> None:
                 "entity_id": e.entity_id,
                 "identifiers": [{"type": i.type.value, "value": i.value} for i in e.identifiers],
                 "finding_count": len(e.findings),
+                "confidence": e.confidence,
+                "reasons": e.reasons,
             }
             for e in result.entities
         ],

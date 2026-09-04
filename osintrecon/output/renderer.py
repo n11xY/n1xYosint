@@ -10,6 +10,7 @@ from rich.table import Table
 
 from osintrecon.core.doctor import DoctorReport
 from osintrecon.core.engine import RunResult
+from osintrecon.core.entity_scoring import confidence_bucket
 from osintrecon.core.models import Finding, MatchStatus
 
 STATUS_STYLE = {
@@ -18,6 +19,14 @@ STATUS_STYLE = {
     MatchStatus.UNCERTAIN: "dim yellow",
     MatchStatus.ERROR: "red",
     MatchStatus.NOT_FOUND: "dim",
+}
+
+CONFIDENCE_BUCKET_STYLE = {
+    "very strong": "bold green",
+    "strong": "green",
+    "possible": "yellow",
+    "weak": "dim yellow",
+    "very weak": "dim",
 }
 
 
@@ -69,6 +78,11 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
             "\n".join(f"- {e.source}: {e.title} ({e.metadata.get('error', '')})" for e in errors[:20]),
             title=f"[red]Source errors ({len(errors)})[/red]", border_style="red",
         ))
+        error_sources = sorted({e.source for e in errors})
+        console.print(
+            f"[yellow]Research completed with partial provider availability -- "
+            f"{len(error_sources)} source(s) reported errors: {', '.join(error_sources)}[/yellow]"
+        )
 
     if result.rejected_inputs:
         console.print(Panel(
@@ -86,6 +100,26 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
         if multi:
             console.print(f"[bold cyan]{len(multi)} correlated entit{'y' if len(multi)==1 else 'ies'} "
                            f"(linked across multiple identifiers)[/bold cyan]")
+            for e in sorted(multi, key=lambda x: -x.confidence):
+                bucket = confidence_bucket(e.confidence)
+                style = CONFIDENCE_BUCKET_STYLE.get(bucket, "")
+                identifiers_line = ", ".join(
+                    f"{i.type.value}:{i.value}"
+                    for i in sorted(e.identifiers, key=lambda i: (i.type.value, i.value))
+                )
+                sources_line = ", ".join(sorted({f.source for f in e.findings}))
+
+                body = [f"[bold]Identifiers:[/bold] {identifiers_line}"]
+                if e.reasons:
+                    body.append("[bold]Evidence:[/bold]")
+                    body.extend(f"  - {reason}" for reason in e.reasons)
+                body.append(f"[bold]Sources:[/bold] {sources_line}")
+
+                console.print(Panel(
+                    "\n".join(body),
+                    title=f"[{style}]Entity {e.entity_id} -- {bucket} ({e.confidence:.0%})[/{style}]",
+                    border_style=style or "cyan",
+                ))
 
 
 def render_doctor(report: DoctorReport, console: Console | None = None, verbose: bool = False) -> None:

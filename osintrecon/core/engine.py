@@ -17,6 +17,7 @@ from osintrecon.core.avatar_correlation import find_avatar_matches
 from osintrecon.core.cache import ResponseCache
 from osintrecon.core.config import Config
 from osintrecon.core.correlation import CorrelationEngine
+from osintrecon.core.entity_scoring import score_entities
 from osintrecon.core.http_client import AsyncHttpClient
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Entity, Finding, Identifier, RunStats
@@ -106,7 +107,7 @@ class Engine:
             cache.close()
 
         scored, duplicates_removed = dedup_and_score(all_findings)
-        entities = CorrelationEngine().correlate(scored)
+        entities = score_entities(CorrelationEngine().correlate(scored))
 
         self.stats.findings_total = len(scored)
         self.stats.duplicates_removed = duplicates_removed
