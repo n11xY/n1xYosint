@@ -15,11 +15,16 @@ per-account CONFIRMED signal.
 
 Live-verified: querying "Linus Torvalds" correctly surfaces the login
 "torvalds" among 13 results.
+
+Tries the exact name first; if that returns no items, retries once with
+the ASCII-folded form (name_variants.py) -- GitHub's display-name index
+is not reliably diacritic-tolerant for names like Turkish ones.
 """
 from __future__ import annotations
 
 from typing import ClassVar
 
+from osintrecon.core import name_variants
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
@@ -41,26 +46,31 @@ class GitHubNameSearchPlugin(SourcePlugin):
         token = self.config.get("api_key")
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        params = {"q": f'"{identifier.value}" in:name', "per_page": MAX_RESULTS}
 
-        resp = await self.http.get(self.name, SEARCH_URL, headers=headers, params=params, expected_statuses={403, 422})
+        items: list = []
+        for candidate_name in name_variants.variants(identifier.value):
+            params = {"q": f'"{candidate_name}" in:name', "per_page": MAX_RESULTS}
+            resp = await self.http.get(self.name, SEARCH_URL, headers=headers, params=params, expected_statuses={403, 422})
 
-        if resp.error is not None:
-            return [Finding(
-                source=self.name, identifier=identifier, status=MatchStatus.ERROR,
-                source_url=SEARCH_URL, title="GitHub name search request failed", category=self.category,
-                metadata={"error": resp.error},
-            )]
-        if resp.status == 403:
-            return [Finding(
-                source=self.name, identifier=identifier, status=MatchStatus.ERROR,
-                source_url=SEARCH_URL, title="GitHub search API rate-limited", category=self.category,
-                metadata={"http_status": 403},
-            )]
-        if resp.status != 200:
-            return []
+            if resp.error is not None:
+                return [Finding(
+                    source=self.name, identifier=identifier, status=MatchStatus.ERROR,
+                    source_url=SEARCH_URL, title="GitHub name search request failed", category=self.category,
+                    metadata={"error": resp.error},
+                )]
+            if resp.status == 403:
+                return [Finding(
+                    source=self.name, identifier=identifier, status=MatchStatus.ERROR,
+                    source_url=SEARCH_URL, title="GitHub search API rate-limited", category=self.category,
+                    metadata={"http_status": 403},
+                )]
+            if resp.status != 200:
+                return []
 
-        items = (resp.json() or {}).get("items") or []
+            items = (resp.json() or {}).get("items") or []
+            if items:
+                break  # exact form matched -- no need to try the ASCII-folded variant
+
         return [
             Finding(
                 source=self.name,

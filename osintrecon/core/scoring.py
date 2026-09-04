@@ -49,7 +49,7 @@ def deduplicate(findings: list[Finding]) -> tuple[list[Finding], int]:
     return list(seen.values()), removed
 
 
-def _plugin_family(source: str) -> str:
+def plugin_family(source: str) -> str:
     """'username_sites:Instagram' and 'username_sites:GitHub' are the same
     plugin's opinion, not two independent ones -- group by the part before ':'."""
     return source.split(":", 1)[0]
@@ -60,7 +60,7 @@ def score(findings: list[Finding]) -> list[Finding]:
     by_identifier: dict[tuple, set[str]] = defaultdict(set)
     for f in findings:
         if f.status not in (MatchStatus.NOT_FOUND, MatchStatus.ERROR):
-            by_identifier[(f.identifier.type, f.identifier.value)].add(_plugin_family(f.source))
+            by_identifier[(f.identifier.type, f.identifier.value)].add(plugin_family(f.source))
 
     for f in findings:
         base = BASE_CONFIDENCE.get(f.status, 0.0)

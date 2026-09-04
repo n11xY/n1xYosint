@@ -60,6 +60,9 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "scratch": ["api.scratch.mit.edu"],
     "github_name_search": ["api.github.com"],
     "wikipedia": ["en.wikipedia.org"],
+    "orcid": ["pub.orcid.org"],
+    "openalex": ["api.openalex.org"],
+    "crossref": ["api.crossref.org"],
 }
 
 DNS_CONCURRENCY = 20

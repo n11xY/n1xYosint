@@ -83,6 +83,11 @@ class Entity:
     identifiers: set[Identifier] = field(default_factory=set)
     findings: list[Finding] = field(default_factory=list)
     confidence: float = 0.0
+    # Human-readable explanations for `confidence`, set by
+    # core/entity_scoring.py -- e.g. "Confirmed on 3 independent
+    # sources". Empty for single-identifier entities (nothing to
+    # resolve) and left [] until entity_scoring.py runs.
+    reasons: list[str] = field(default_factory=list)
 
     def add_finding(self, finding: Finding) -> None:
         self.findings.append(finding)
