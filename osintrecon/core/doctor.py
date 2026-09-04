@@ -48,6 +48,12 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "wayback": ["web.archive.org"],
     "telegram_api": ["api.telegram.org"],
     "youtube_api": ["www.googleapis.com"],
+    "hackernews": ["hacker-news.firebaseio.com"],
+    "devto": ["dev.to"],
+    "chess_com": ["api.chess.com"],
+    "lichess": ["lichess.org"],
+    "codewars": ["www.codewars.com"],
+    "speedrun_com": ["www.speedrun.com"],
 }
 
 DNS_CONCURRENCY = 20
