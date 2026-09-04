@@ -95,6 +95,12 @@ configuration.
 | `github_commit_email` | code-hosting | username | free, no key — GitHub's commit search API; finds a real commit-author email even when it's hidden from the profile (optional GitHub PAT raises the search API's tighter 10/min rate limit) |
 | `wayback` | archive | url | free, no key — Internet Archive's CDX API; archive history for a discovered URL (e.g. a GitHub profile's linked blog) |
 | `roblox` / `minecraft` / `bluesky` / `anilist` | social | username | official public APIs |
+| `hackernews` | forum | username | free, no key — official Firebase-backed HN API, upgrades the heuristic site check to a confirmed API result with real karma/account-age data |
+| `devto` | forum | username | free, no key — official DEV.to API; discovers linked GitHub/Twitter usernames for `--depth` enrichment |
+| `chess_com` | social | username | free, no key — official Chess.com Published-Data API; discovers a linked Twitch channel |
+| `lichess` | social | username | free, no key — official Lichess API; discovers a linked Twitch channel |
+| `codewars` | code-hosting | username | free, no key — official Codewars API |
+| `speedrun_com` | social | username | free, no key — official speedrun.com API; discovers linked Twitch/YouTube usernames |
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
 | `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |
 | `gravatar` | profile-directory | email | |
