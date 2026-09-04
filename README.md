@@ -103,6 +103,8 @@ configuration.
 | `emailrep` | breach | email | free, optional key for higher rate limit |
 | `hibp` | breach + paste | email | key required, paid (~$4.39/mo) |
 | `twitch_api` / `steam_api` | social | username | key required (free), upgrades the heuristic site check to a confirmed API result |
+| `telegram_api` | social | username | key required (free bot token via @BotFather) — official Bot API `getChat`; the generic `username_sites` entry for Telegram can't distinguish real from nonexistent (live-verified: byte-identical HTML either way, see [CONTRIBUTING.md](CONTRIBUTING.md)), so this is the only reliable Telegram signal — **not live-verified**, see the module's docstring |
+| `youtube_api` | social | username | key required (free tier), official Data API v3 `channels.list?forHandle=` — a stronger, CONFIRMED-grade alternative to the heuristic `username_sites` entry — **not live-verified**, see the module's docstring |
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
 | `phone_lookup` | phone | phone | free, no key, no API call — offline validity/country/carrier/line-type via libphonenumber |
 | `abstractapi_phone` | phone | phone | key required (free tier), live carrier/line-type/location lookup — **not live-verified**, see the module's docstring |
