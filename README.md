@@ -1,7 +1,7 @@
 <h1 align="center">n1xYosint</h1>
 
 <p align="center">
-  Async, plugin-based OSINT reconnaissance for usernames, email addresses, and phone numbers.
+  Async, plugin-based OSINT reconnaissance for usernames, email addresses, phone numbers, and full names.
 </p>
 
 <p align="center">
@@ -12,10 +12,11 @@
   <a href="https://github.com/n11xY/n1xYosint/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/n11xY/n1xYosint?style=social"></a>
 </p>
 
-Point it at a username, email, or phone number and it fans out across
-dozens of platforms and APIs concurrently, correlates whatever it finds
-back into linked identities, scores each result by how confident it
-actually is, and hands you a report — terminal, JSON, CSV, or TXT.
+Point it at a username, email, phone number, or full name and it fans out
+across dozens of platforms and APIs concurrently, correlates whatever it
+finds back into linked identities, scores each result by how confident it
+actually is, and hands you a report — terminal, JSON, CSV, TXT, HTML, or
+a typed identity graph.
 
 Every result is either **confirmed** (an official API said so) or
 **probable** (a page-content heuristic said so) — the two are never mixed
