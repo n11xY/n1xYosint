@@ -1,6 +1,8 @@
+import asyncio
 from types import SimpleNamespace
 
-from osintrecon.plugins.sources.username_sites import _decoy_username, _is_found
+from osintrecon.core.models import Identifier, IdentifierType
+from osintrecon.plugins.sources.username_sites import UsernameSitesPlugin, _decoy_username, _is_found
 
 STATUS_SITE = {"name": "Example", "url": "https://example.com/{}", "check": "status", "found_status": 200}
 CONTENT_SITE = {
@@ -52,3 +54,42 @@ def test_decoy_username_is_short_and_synthetic():
 
 def test_decoy_username_is_fresh_each_call():
     assert _decoy_username() != _decoy_username()
+
+
+class FakeResp:
+    def __init__(self, status=404):
+        self.status = status
+        self.error = None
+        self.text = ""
+        self.cached = False
+        self.evidence_path = None
+
+    def json(self):
+        return None
+
+
+class FakeHttp:
+    def __init__(self):
+        self.requested_urls = []
+
+    async def get(self, source, url, expected_statuses=None):
+        self.requested_urls.append(url)
+        return FakeResp(status=404)  # not-found for everything -- we only care about the URL built
+
+
+def test_identifier_value_is_url_encoded_before_formatting():
+    # Some site templates (config/sites.json) put the identifier directly in
+    # the URL's hostname, e.g. "https://{}.itch.io" -- an unencoded value
+    # containing a URL-structural character could change which host the
+    # actual request goes to. quote(value, safe="") must neutralize that
+    # before it ever reaches str.format().
+    http = FakeHttp()
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [{"name": "Evil", "url": "https://{}.itch.io", "check": "status", "found_status": 200}]
+
+    asyncio.run(plugin.run(Identifier(value="evil.example.com#", type=IdentifierType.USERNAME)))
+
+    assert len(http.requested_urls) == 1
+    requested_host_and_beyond = http.requested_urls[0].split("://", 1)[1]
+    assert requested_host_and_beyond.startswith("evil.example.com%23")
+    assert "#" not in http.requested_urls[0]

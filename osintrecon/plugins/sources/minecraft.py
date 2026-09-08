@@ -8,6 +8,7 @@ required.
 from __future__ import annotations
 
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -22,7 +23,7 @@ class MinecraftPlugin(SourcePlugin):
     description: ClassVar[str] = "Looks up a username via the public Mojang (Minecraft) API."
 
     async def run(self, identifier: Identifier) -> list[Finding]:
-        url = API_URL.format(identifier.value)
+        url = API_URL.format(quote(identifier.value, safe=""))
         resp = await self.http.get(self.name, url, expected_statuses={204, 404})
 
         if resp.error is not None:

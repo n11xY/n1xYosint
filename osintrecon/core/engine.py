@@ -21,6 +21,7 @@ from osintrecon.core.entity_scoring import score_entities
 from osintrecon.core.http_client import AsyncHttpClient
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Entity, Finding, Identifier, IdentifierType, RunStats
+from osintrecon.core.normalize import is_valid_discovered_identifier
 from osintrecon.core.scoring import process as dedup_and_score
 from osintrecon.plugins.base import SourcePlugin
 from osintrecon.plugins.registry import PluginRegistry
@@ -144,6 +145,12 @@ class Engine:
         for f in findings:
             for discovered in f.discovered_identifiers:
                 if discovered in visited or discovered in seen_this_round:
+                    continue
+                if not is_valid_discovered_identifier(discovered):
+                    log.debug(
+                        "discarding identifier discovered by %s: invalid %s shape: %r",
+                        f.source, discovered.type.value, discovered.value,
+                    )
                     continue
                 if len(visited) + len(next_round) >= max_enrichment:
                     log.warning("enrichment cap (%d identifiers) reached, stopping expansion", max_enrichment)

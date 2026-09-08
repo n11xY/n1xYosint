@@ -16,6 +16,7 @@ Config:
 from __future__ import annotations
 
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -34,7 +35,7 @@ class TwitterAPIPlugin(SourcePlugin):
         return bool(self.config.get("bearer_token"))
 
     async def run(self, identifier: Identifier) -> list[Finding]:
-        url = API_URL.format(identifier.value)
+        url = API_URL.format(quote(identifier.value, safe=""))
         headers = {"Authorization": f"Bearer {self.config['bearer_token']}"}
         params = {"user.fields": "created_at,description,location,public_metrics,profile_image_url"}
         resp = await self.http.get(self.name, url, headers=headers, params=params, expected_statuses={404})

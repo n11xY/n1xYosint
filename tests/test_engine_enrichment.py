@@ -45,3 +45,18 @@ def test_collect_new_identifiers_respects_cap():
     new_ids = Engine._collect_new_identifiers(findings, visited, max_enrichment=10)
 
     assert len(new_ids) == 2
+
+
+def test_collect_new_identifiers_discards_invalid_shaped_discovery():
+    # A plugin can discover a USERNAME identifier straight from third-party
+    # API data, never passed through validate_and_build()'s regexes.
+    # _collect_new_identifiers must filter out a value shaped unlike
+    # anything CLI input could ever produce before it's handed to a plugin.
+    finding = _finding_with_discoveries(
+        ("evil.example.com#", IdentifierType.USERNAME),
+        ("torvalds", IdentifierType.USERNAME),
+    )
+
+    new_ids = Engine._collect_new_identifiers([finding], visited=set(), max_enrichment=200)
+
+    assert [i.value for i in new_ids] == ["torvalds"]

@@ -8,6 +8,7 @@ object; a nonexistent one returns HTTP 404.
 from __future__ import annotations
 
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -23,7 +24,8 @@ class ChessComPlugin(SourcePlugin):
     description: ClassVar[str] = "Looks up a username via Chess.com's official, free, keyless Published-Data API."
 
     async def run(self, identifier: Identifier) -> list[Finding]:
-        url = PROFILE_URL.format(identifier.value)
+        encoded = quote(identifier.value, safe="")
+        url = PROFILE_URL.format(encoded)
         resp = await self.http.get(self.name, url, expected_statuses={404})
 
         if resp.error is not None:
@@ -54,7 +56,7 @@ class ChessComPlugin(SourcePlugin):
             "status": data.get("status"),
         }
 
-        stats_resp = await self.http.get(self.name, STATS_URL.format(identifier.value), expected_statuses={404})
+        stats_resp = await self.http.get(self.name, STATS_URL.format(encoded), expected_statuses={404})
         if stats_resp.status == 200:
             stats = stats_resp.json() or {}
             rapid = stats.get("chess_rapid", {}).get("last", {})
