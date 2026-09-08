@@ -6,6 +6,7 @@ raises the API rate limit but is not required.
 from __future__ import annotations
 
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -20,7 +21,7 @@ class GitHubPlugin(SourcePlugin):
     description: ClassVar[str] = "Looks up a username via the public GitHub REST API."
 
     async def run(self, identifier: Identifier) -> list[Finding]:
-        url = API_URL.format(identifier.value)
+        url = API_URL.format(quote(identifier.value, safe=""))
         headers = {"Accept": "application/vnd.github+json"}
         token = self.config.get("api_key")
         if token:

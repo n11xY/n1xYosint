@@ -31,6 +31,7 @@ import json
 import secrets
 from pathlib import Path
 from typing import ClassVar
+from urllib.parse import quote
 
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
@@ -89,7 +90,11 @@ class UsernameSitesPlugin(SourcePlugin):
         return [finding for finding in results if finding is not None]
 
     async def _check_site(self, site: dict, identifier: Identifier, decoy: str) -> Finding | None:
-        url = site["url"].format(identifier.value)
+        # Encode before formatting into the template -- some entries put the
+        # identifier in a position where an unencoded URL-structural
+        # character could change which request actually gets sent.
+        # safe="" so a value can never introduce a new URL path segment.
+        url = site["url"].format(quote(identifier.value, safe=""))
         source_name = f"{self.name}:{site['name']}"
         resp = await self.http.get(source_name, url, expected_statuses={404})
 
@@ -111,7 +116,7 @@ class UsernameSitesPlugin(SourcePlugin):
         metadata = {"platform": site["name"], "http_status": resp.status, "cached": resp.cached}
         title = f"{site['name']} profile found for '{identifier.value}'"
 
-        decoy_url = site["url"].format(decoy)
+        decoy_url = site["url"].format(quote(decoy, safe=""))
         decoy_resp = await self.http.get(source_name, decoy_url, expected_statuses={404})
         if decoy_resp.error is not None:
             metadata["decoy_check"] = "skipped (decoy request failed)"

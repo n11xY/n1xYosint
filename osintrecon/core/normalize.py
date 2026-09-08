@@ -135,6 +135,36 @@ def normalize_batch(raw_values: list[str]) -> NormalizationResult:
     return NormalizationResult(identifiers=identifiers, rejected=rejected)
 
 
+def is_valid_discovered_identifier(identifier: Identifier) -> bool:
+    """Guards an identifier a *plugin* discovered from a third-party API
+    response -- as opposed to something the user typed -- before it's
+    queued for the next --depth enrichment round.
+
+    CLI-typed input always goes through `validate_and_build()` above, but a
+    discovered identifier (e.g. a "linked GitHub username" field pulled from
+    another profile) is built directly by the plugin and never passed
+    through those same regexes. That field is untrusted third-party data,
+    and some downstream consumers build outbound request URLs from it --
+    an unvalidated value could carry characters that change how such a URL
+    is later interpreted. Reusing the same shape rules CLI input already
+    has to pass closes that off for every consumer at once."""
+    value = identifier.value
+    if identifier.type == IdentifierType.USERNAME:
+        return bool(USERNAME_RE.match(value))
+    if identifier.type == IdentifierType.EMAIL:
+        return bool(EMAIL_RE.match(value))
+    if identifier.type == IdentifierType.NAME:
+        return bool(NAME_RE.match(value))
+    if identifier.type == IdentifierType.PHONE:
+        try:
+            return phonenumbers.is_valid_number(phonenumbers.parse(value, None))
+        except phonenumbers.NumberParseException:
+            return False
+    if identifier.type == IdentifierType.URL:
+        return value.startswith(("http://", "https://"))
+    return True  # IdentifierType.OTHER -- no shape to enforce, and nothing consumes it
+
+
 def load_from_file(path: str) -> list[str]:
     """Load one identifier per line from a text file, ignoring blanks and '#' comments."""
     p = Path(path)

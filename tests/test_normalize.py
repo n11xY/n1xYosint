@@ -1,5 +1,5 @@
-from osintrecon.core.models import IdentifierType
-from osintrecon.core.normalize import normalize_batch, validate_and_build
+from osintrecon.core.models import Identifier, IdentifierType
+from osintrecon.core.normalize import is_valid_discovered_identifier, normalize_batch, validate_and_build
 
 
 def test_valid_email():
@@ -87,3 +87,43 @@ def test_name_supports_non_ascii_letters():
     assert reason is None
     assert ident.type == IdentifierType.NAME
     assert ident.value == "Rüzgar Karan Yönlü"
+
+
+# is_valid_discovered_identifier() guards identifiers a *plugin* builds from
+# third-party API data (never passed through validate_and_build()) before
+# they're queued for the next --depth enrichment round -- a discovered
+# value shaped unlike what CLI input would ever produce must be rejected.
+
+def test_discovered_username_with_hash_is_rejected():
+    bad = Identifier(value="evil.example.com#", type=IdentifierType.USERNAME)
+    assert is_valid_discovered_identifier(bad) is False
+
+
+def test_discovered_username_with_slash_is_rejected():
+    bad = Identifier(value="a/b", type=IdentifierType.USERNAME)
+    assert is_valid_discovered_identifier(bad) is False
+
+
+def test_discovered_normal_username_is_accepted():
+    ok = Identifier(value="torvalds", type=IdentifierType.USERNAME)
+    assert is_valid_discovered_identifier(ok) is True
+
+
+def test_discovered_email_must_match_email_shape():
+    assert is_valid_discovered_identifier(Identifier(value="not-an-email", type=IdentifierType.EMAIL)) is False
+    assert is_valid_discovered_identifier(Identifier(value="a@b.com", type=IdentifierType.EMAIL)) is True
+
+
+def test_discovered_url_must_be_http_or_https():
+    assert is_valid_discovered_identifier(Identifier(value="javascript:alert(1)", type=IdentifierType.URL)) is False
+    assert is_valid_discovered_identifier(Identifier(value="https://orcid.org/0000", type=IdentifierType.URL)) is True
+
+
+def test_discovered_name_must_match_name_shape():
+    assert is_valid_discovered_identifier(Identifier(value="../../etc/passwd", type=IdentifierType.NAME)) is False
+    assert is_valid_discovered_identifier(Identifier(value="Jane Doe", type=IdentifierType.NAME)) is True
+
+
+def test_discovered_other_type_always_accepted():
+    # OTHER has no shape to enforce and nothing in the codebase consumes it.
+    assert is_valid_discovered_identifier(Identifier(value="anything#weird", type=IdentifierType.OTHER)) is True
