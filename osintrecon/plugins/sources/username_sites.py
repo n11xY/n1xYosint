@@ -90,11 +90,18 @@ class UsernameSitesPlugin(SourcePlugin):
         return [finding for finding in results if finding is not None]
 
     async def _check_site(self, site: dict, identifier: Identifier, decoy: str) -> Finding | None:
+        # Most sites treat the profile path case-insensitively (or the
+        # identifier was already typed in the account's real case), but a
+        # few (confirmed: Spotify, which lowercases the handle you type at
+        # signup into its own account id) only match the exact lowercase
+        # form -- "lowercase": true opts an entry into normalizing before
+        # the request, everyone else is untouched.
+        value = identifier.value.lower() if site.get("lowercase") else identifier.value
         # Encode before formatting into the template -- some entries put the
         # identifier in a position where an unencoded URL-structural
         # character could change which request actually gets sent.
         # safe="" so a value can never introduce a new URL path segment.
-        url = site["url"].format(quote(identifier.value, safe=""))
+        url = site["url"].format(quote(value, safe=""))
         source_name = f"{self.name}:{site['name']}"
         resp = await self.http.get(source_name, url, expected_statuses={404})
 
