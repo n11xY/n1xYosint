@@ -91,5 +91,12 @@
   {"name": "Pastebin", "category": "profile-directory", "url": "https://pastebin.com/u/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Poshmark", "category": "profile-directory", "url": "https://poshmark.com/closet/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Observable", "category": "code-hosting", "url": "https://observablehq.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Gumroad", "category": "profile-directory", "url": "https://{}.gumroad.com", "check": "status", "found_status": 200, "not_found_status": 404}
+  {"name": "Gumroad", "category": "profile-directory", "url": "https://{}.gumroad.com", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Hugging Face", "category": "code-hosting", "url": "https://huggingface.co/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Replit", "category": "code-hosting", "url": "https://replit.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Gitee", "category": "code-hosting", "url": "https://gitee.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Spotify", "category": "social", "url": "https://open.spotify.com/user/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Liberapay", "category": "profile-directory", "url": "https://liberapay.com/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Open Collective", "category": "profile-directory", "url": "https://opencollective.com/{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Wikipedia (user page)", "category": "profile-directory", "url": "https://en.wikipedia.org/wiki/User:{}", "check": "status", "found_status": 200, "not_found_status": 404}
 ]
