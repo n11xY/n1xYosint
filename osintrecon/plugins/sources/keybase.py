@@ -48,6 +48,24 @@ class KeybasePlugin(SourcePlugin):
         basics = them.get("basics") or {}
         profile = them.get("profile") or {}
 
+        # Keybase proofs are cryptographically signed by the account itself
+        # (posted as a public gist/tweet/toot etc. and checked at verify
+        # time) -- not self-reported the way a plain bio field is, so this
+        # is one of the strongest discovered-identifier signals in the
+        # codebase, on par with avatar_correlation.py's photo-hash match.
+        # Only proof_types with an unambiguous, directly reusable identifier
+        # shape are handled; anything else is skipped rather than guessed at.
+        discovered: list[Identifier] = []
+        proofs = ((them.get("proofs_summary") or {}).get("all")) or []
+        for proof in proofs:
+            if proof.get("state") != 1:  # 1 = currently valid; anything else = revoked/broken
+                continue
+            proof_type = proof.get("proof_type")
+            if proof_type in ("twitter", "github", "reddit", "hackernews") and proof.get("nametag"):
+                discovered.append(Identifier(value=proof["nametag"], type=IdentifierType.USERNAME))
+            elif proof_type in ("dns", "web") and proof.get("service_url"):
+                discovered.append(Identifier(value=proof["service_url"], type=IdentifierType.URL))
+
         return [Finding(
             source=self.name,
             identifier=identifier,
@@ -61,5 +79,6 @@ class KeybasePlugin(SourcePlugin):
                 "location": profile.get("location"),
                 "joined": basics.get("ctime"),
             },
+            discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,
         )]

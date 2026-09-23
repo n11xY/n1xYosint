@@ -11,12 +11,14 @@ Live-verified: a real account (Gargron, Mastodon's creator) returns HTTP
 """
 from __future__ import annotations
 
+import re
 from typing import ClassVar
 
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
 API_URL = "https://mastodon.social/api/v1/accounts/lookup"
+_HREF_RE = re.compile(r'href="([^"]+)"')
 
 
 class MastodonSocialPlugin(SourcePlugin):
@@ -46,6 +48,21 @@ class MastodonSocialPlugin(SourcePlugin):
             )]
 
         data = resp.json() or {}
+
+        # A profile "field" only carries verified_at once Mastodon's own
+        # rel=me check has passed (the UI's green checkmark) -- an
+        # unverified/self-claimed field is left out entirely rather than
+        # treated as the same trust tier, same posture as Keybase's
+        # proof-state check in keybase.py.
+        discovered: list[Identifier] = []
+        for field in data.get("fields") or []:
+            if not field.get("verified_at"):
+                continue
+            match = _HREF_RE.search(field.get("value") or "")
+            href = match.group(1) if match else None
+            if href and href.startswith(("http://", "https://")):
+                discovered.append(Identifier(value=href, type=IdentifierType.URL))
+
         return [Finding(
             source=self.name,
             identifier=identifier,
@@ -61,5 +78,6 @@ class MastodonSocialPlugin(SourcePlugin):
                 "bot": data.get("bot"),
                 "avatar_url": data.get("avatar"),
             },
+            discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,
         )]
