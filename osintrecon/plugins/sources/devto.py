@@ -48,6 +48,8 @@ class DevToPlugin(SourcePlugin):
             discovered.append(Identifier(value=data["github_username"], type=IdentifierType.USERNAME))
         if data.get("twitter_username"):
             discovered.append(Identifier(value=data["twitter_username"], type=IdentifierType.USERNAME))
+        if data.get("website_url"):
+            discovered.append(Identifier(value=data["website_url"], type=IdentifierType.URL))
 
         return [Finding(
             source=self.name,
