@@ -95,7 +95,12 @@ def _matches_from_hashes(hashes: "dict[tuple[Identifier, str], imagehash.ImageHa
             (ident_b, url_b), hash_b = items[j]
             if ident_a == ident_b:
                 continue
-            distance = hash_a - hash_b
+            # imagehash's ImageHash.__sub__ returns a numpy integer (e.g.
+            # numpy.int64), not a plain int -- json.dumps() (export_json,
+            # also run on every web search now via results_store.py) can't
+            # serialize that, so it's cast here rather than wherever it's
+            # eventually written out.
+            distance = int(hash_a - hash_b)
             if distance > HAMMING_THRESHOLD:
                 continue
             matches.append(Finding(
