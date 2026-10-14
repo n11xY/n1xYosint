@@ -7,7 +7,7 @@
   {"name": "HackerNews", "category": "forum", "url": "https://news.ycombinator.com/user?id={}", "check": "message", "not_found_text": "No such user."},
   {"name": "DevTo", "category": "forum", "url": "https://dev.to/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Medium", "category": "social", "url": "https://medium.com/@{}", "check": "message", "not_found_text": "PAGE NOT FOUND"},
-  {"name": "Instagram", "category": "social", "url": "https://www.instagram.com/{}/", "check": "message", "not_found_text": "Sorry, this page isn't available."},
+  {"name": "Instagram", "category": "social", "url": "https://www.instagram.com/{}/", "check": "message", "not_found_text": "<title>Instagram</title>"},
   {"name": "TikTok", "category": "social", "url": "https://www.tiktok.com/@{}", "check": "message", "not_found_text": "Couldn't find this account"},
   {"name": "Pinterest", "category": "social", "url": "https://www.pinterest.com/{}/", "check": "message", "not_found_text": "User not found"},
   {"name": "Twitch", "category": "social", "url": "https://www.twitch.tv/{}", "check": "message", "not_found_text": "leading video platform and community for gamers"},
