@@ -44,6 +44,15 @@ def _get_or_create(nodes: dict[str, dict], node_id: str, node_type: str, label: 
     return node_id
 
 
+def _finding_edge_properties(f: Finding, **extra: Any) -> dict[str, Any]:
+    # Every edge derived from a finding carries that finding's own
+    # verification status/confidence -- without this, a UI rendering the
+    # graph has no way to tell a CONFIRMED relationship from a PROBABLE/
+    # UNCERTAIN one at the edge level (only entity.confidence existed
+    # before, which is a whole-entity signal, not a per-edge one).
+    return {"status": f.status.value, "confidence": f.confidence, **extra}
+
+
 def build_graph(result: RunResult) -> dict:
     nodes: dict[str, dict] = {}
     edges: list[dict] = []
@@ -71,31 +80,31 @@ def build_graph(result: RunResult) -> dict:
                 continue
 
             if f.source_url:
-                edges.append({"source": person_id, "target": f.source_url, "type": "sameAs", "properties": {"via": f.source}})
+                edges.append({"source": person_id, "target": f.source_url, "type": "sameAs", "properties": _finding_edge_properties(f, via=f.source)})
 
             family = plugin_family(f.source)
             if family not in seen_families:
                 seen_families.add(family)
-                edges.append({"source": person_id, "target": family, "type": "mentionedBy", "properties": {}})
+                edges.append({"source": person_id, "target": family, "type": "mentionedBy", "properties": _finding_edge_properties(f)})
 
             company = f.metadata.get("company")
             if company and isinstance(company, str) and company.strip():
                 org_id = f"org:{company.strip().lower()}"
                 _get_or_create(nodes, org_id, "Organization", company.strip(), {})
-                edges.append({"source": person_id, "target": org_id, "type": "worksAt", "properties": {"via": f.source}})
+                edges.append({"source": person_id, "target": org_id, "type": "worksAt", "properties": _finding_edge_properties(f, via=f.source)})
 
             institution = f.metadata.get("institution")
             if institution and isinstance(institution, str) and institution.strip():
                 uni_id = f"university:{institution.strip().lower()}"
                 _get_or_create(nodes, uni_id, "University", institution.strip(), {})
-                edges.append({"source": person_id, "target": uni_id, "type": "memberOf", "properties": {"via": f.source}})
+                edges.append({"source": person_id, "target": uni_id, "type": "memberOf", "properties": _finding_edge_properties(f, via=f.source)})
 
             if f.source == "crossref":
                 _add_publication_edge(nodes, edges, person_id, f)
 
             for discovered in f.discovered_identifiers:
                 if discovered.type == IdentifierType.URL:
-                    edges.append({"source": person_id, "target": discovered.value, "type": "linksTo", "properties": {"via": f.source}})
+                    edges.append({"source": person_id, "target": discovered.value, "type": "linksTo", "properties": _finding_edge_properties(f, via=f.source)})
 
     return {"nodes": list(nodes.values()), "edges": edges}
 
@@ -111,4 +120,4 @@ def _add_publication_edge(nodes: dict[str, dict], edges: list[dict], person_id: 
         "venue": f.metadata.get("venue"),
         "year": f.metadata.get("year"),
     })
-    edges.append({"source": person_id, "target": pub_id, "type": "authorOf", "properties": {}})
+    edges.append({"source": person_id, "target": pub_id, "type": "authorOf", "properties": _finding_edge_properties(f)})
