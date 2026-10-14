@@ -53,6 +53,17 @@ def _load_sites(path: Path) -> list[dict]:
         return []
 
 
+# Status codes that mean "the real answer is unknown" (rate-limited,
+# temporarily down) rather than a genuine answer. Without this,
+# _is_found() below treats any non-found status as a plain non-match --
+# a 429 from a platform that's currently rate-limiting this server's IP
+# would silently report a real account as nonexistent instead of flagging
+# that the check simply couldn't run. No entry in config/sites.json uses
+# any of these as its actual found_status/not_found_status (confirmed by
+# grepping the file), so this can't misfire against a real signal.
+_INCONCLUSIVE_STATUSES = {429, 500, 502, 503, 504}
+
+
 def _decoy_username() -> str:
     # Short enough to fit under most platforms' own username length caps
     # (some sites in config/sites.json cap around 15 characters), clearly
@@ -111,6 +122,14 @@ class UsernameSitesPlugin(SourcePlugin):
                 source_url=url, title=f"{site['name']}: request failed",
                 category=site.get("category", self.category),
                 metadata={"error": resp.error},
+            )
+
+        if resp.status in _INCONCLUSIVE_STATUSES:
+            return Finding(
+                source=source_name, identifier=identifier, status=MatchStatus.ERROR,
+                source_url=url, title=f"{site['name']}: temporarily unavailable (HTTP {resp.status})",
+                category=site.get("category", self.category),
+                metadata={"http_status": resp.status},
             )
 
         check_type = site.get("check", "status")
