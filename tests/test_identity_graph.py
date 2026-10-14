@@ -8,7 +8,7 @@ def _identifier(value, itype):
 
 
 def _finding(source, identifier, status=MatchStatus.UNCERTAIN, source_url="https://example.com/x",
-             title="", metadata=None, discovered_identifiers=None):
+             title="", metadata=None, discovered_identifiers=None, confidence=0.0):
     return Finding(
         source=source,
         identifier=identifier,
@@ -17,6 +17,7 @@ def _finding(source, identifier, status=MatchStatus.UNCERTAIN, source_url="https
         title=title,
         metadata=metadata or {},
         discovered_identifiers=discovered_identifiers or [],
+        confidence=confidence,
     )
 
 
@@ -144,6 +145,28 @@ def test_discovered_url_identifier_produces_linksto_edge():
     links_to_edges = [e for e in graph["edges"] if e["type"] == "linksTo"]
     assert len(links_to_edges) == 1
     assert links_to_edges[0]["target"] == "https://orcid.org/0000-0000-0000-0002"
+
+
+def test_edges_carry_the_originating_finding_status_and_confidence():
+    # A UI rendering this graph needs to distinguish a verified (CONFIRMED)
+    # relationship from an inferred/uncertain one at the edge level, not
+    # just the whole-entity confidence -- see identity_graph._finding_edge_properties.
+    name_id = _identifier("Jane Doe", IdentifierType.NAME)
+    user_id = _identifier("janedoe", IdentifierType.USERNAME)
+    findings = [
+        _finding(
+            "github_name_search", name_id, status=MatchStatus.CONFIRMED, confidence=0.95,
+            source_url="https://github.com/janedoe", metadata={"company": "Acme Inc."},
+        ),
+    ]
+    entity = _entity(name_id, user_id, findings=findings)
+    result = RunResult(entities=[entity])
+
+    graph = build_graph(result)
+
+    for edge in graph["edges"]:
+        assert edge["properties"]["status"] == "confirmed"
+        assert edge["properties"]["confidence"] == 0.95
 
 
 def test_not_found_and_error_findings_are_skipped():
