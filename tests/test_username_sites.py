@@ -72,7 +72,7 @@ class FakeHttp:
     def __init__(self):
         self.requested_urls = []
 
-    async def get(self, source, url, expected_statuses=None):
+    async def get(self, source, url, headers=None, expected_statuses=None):
         self.requested_urls.append(url)
         return FakeResp(status=404)  # not-found for everything -- we only care about the URL built
 

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 import secrets
 from pathlib import Path
 from typing import ClassVar
@@ -62,6 +63,22 @@ def _load_sites(path: Path) -> list[dict]:
 # any of these as its actual found_status/not_found_status (confirmed by
 # grepping the file), so this can't misfire against a real signal.
 _INCONCLUSIVE_STATUSES = {429, 500, 502, 503, 504}
+
+# This module's whole design (see the class docstring above) is "request
+# the exact page a normal browser would load" -- but the base HTTP client's
+# default headers are just a self-identifying User-Agent and nothing else
+# (honest, and correct for the official-API plugins elsewhere in this
+# codebase, but an unusually bare signal for a plugin that's specifically
+# trying to look like an ordinary pageview). Overridden here, for this
+# plugin only, with what a current desktop Chrome actually sends on a GET.
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 
 def _decoy_username() -> str:
@@ -114,7 +131,12 @@ class UsernameSitesPlugin(SourcePlugin):
         # safe="" so a value can never introduce a new URL path segment.
         url = site["url"].format(quote(value, safe=""))
         source_name = f"{self.name}:{site['name']}"
-        resp = await self.http.get(source_name, url, expected_statuses={404})
+        # A small, randomized pause before firing -- so the (up to
+        # rate_limit_per_source) concurrent checks against one site don't
+        # all leave at the exact same instant, which on its own is a fairly
+        # mechanical-looking pattern regardless of what headers go out.
+        await asyncio.sleep(random.uniform(0.2, 0.8))
+        resp = await self.http.get(source_name, url, headers=_BROWSER_HEADERS, expected_statuses={404})
 
         if resp.error is not None:
             return Finding(
@@ -143,7 +165,8 @@ class UsernameSitesPlugin(SourcePlugin):
         title = f"{site['name']} profile found for '{identifier.value}'"
 
         decoy_url = site["url"].format(quote(decoy, safe=""))
-        decoy_resp = await self.http.get(source_name, decoy_url, expected_statuses={404})
+        await asyncio.sleep(random.uniform(0.2, 0.8))
+        decoy_resp = await self.http.get(source_name, decoy_url, headers=_BROWSER_HEADERS, expected_statuses={404})
         if decoy_resp.error is not None:
             metadata["decoy_check"] = "skipped (decoy request failed)"
         elif _is_found(decoy_resp, site):
