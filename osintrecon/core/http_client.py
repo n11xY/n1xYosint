@@ -256,7 +256,13 @@ class AsyncHttpClient:
                         if self.stats:
                             self.stats.requests_succeeded += 1
 
-                        if allow_cache and self.cache is not None and method.upper() == "GET" and resp.status < 500:
+                        # A 429 says "not right now", not anything about the
+                        # target -- caching it would replay the rate limit
+                        # for the whole TTL (24h by default) on every rerun
+                        # of the same identifier, long after the site has
+                        # stopped limiting us. Same reasoning as 5xx.
+                        if (allow_cache and self.cache is not None and method.upper() == "GET"
+                                and resp.status < 500 and resp.status != 429):
                             self.cache.put(source, method, url, resp.status, text, dict(resp.headers), cache_extra)
 
                         response.evidence_path = await self._save_evidence(source, url, response)
