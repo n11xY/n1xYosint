@@ -9,3 +9,7 @@ dist/
 config/config.yaml
 *.sqlite3
 evidence/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
