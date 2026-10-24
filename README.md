@@ -23,8 +23,9 @@ Every result is either **confirmed** (an official API said so) or
 together silently, so you always know how much to trust a hit.
 
 **Contents:** [Features](#features) · [Scope](#scope) · [Install](#install)
-· [Usage](#usage) · [Source modules](#source-modules) ·
-[Contributing](#contributing) · [Security](#security) · [License](#license)
+· [Usage](#usage) · [Source modules](#source-modules) · [Tests](#tests) ·
+[Contributing](#contributing) · [Security](#security) · [Credits](#credits) ·
+[License](#license)
 
 ## Features
 
