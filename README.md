@@ -40,6 +40,7 @@ together silently, so you always know how much to trust a hit.
 - Multi-hop enrichment (`--depth`) — automatically investigates identifiers discovered along the way (an email pulled from a bio, say), with cycle protection and a configurable cap
 - Confidence scoring with deduplication, tuned to not let a pile of unrelated hits fake out corroboration
 - Async engine with configurable concurrency, retries, per-source rate limiting, SQLite response caching, and proxy support (HTTP or SOCKS5/Tor)
+- Per-site request policies for sites that rate-limit hard -- Instagram by default gets one request at a time, spacing between requests that holds across runs, no retries, a cooldown after a 429 or login wall (Retry-After honoured, otherwise a capped, jittered exponential backoff) that also holds across runs, duplicate lookups shared, and a result cache that keeps "found" and "not found" apart from "couldn't check" -- all overridable under `sources.username_sites.site_settings`
 - `--doctor` diagnostics — checks config, filesystem paths, and DNS reachability for every enabled source before you run a real scan
 - Plugin architecture — drop a file in `plugins/sources/`, no core changes needed
 - JSON / CSV / TXT / HTML / graph export, evidence capture, full source attribution on every finding

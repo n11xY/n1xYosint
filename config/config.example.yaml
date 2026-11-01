@@ -38,6 +38,25 @@ sources:
   username_sites:
     enabled: true
     sites_db: null            # defaults to config/sites.json bundled with the framework
+    # Per-site overrides, keyed by the site's "name" in sites.json. Only the
+    # keys you set change anything; these are the built-in Instagram defaults.
+    # None of the numbers are Instagram's own limits (it publishes none).
+    # Cooldown, spacing and cached results live in the cache database, so
+    # they hold across runs; with the cache disabled they last one run.
+    site_settings:
+      Instagram:
+        enabled: true
+        max_concurrency: 1            # Instagram requests in flight at once
+        request_timeout: 15           # seconds
+        minimum_request_interval: 5   # seconds between request starts, across runs
+        cooldown_duration: 900        # pause after a 429 or login wall without Retry-After;
+        max_cooldown_duration: 21600  #   doubles per consecutive one, up to this (jittered)
+        max_retry_attempts: 0         # retries within one lookup (a 429 is only retried
+                                      #   when Retry-After asks for <= 10s)
+        cache_ttl: 86400              # reuse "profile found" for this long
+        negative_cache_ttl: 3600      # reuse "not found" for this long
+        stale_ttl: 604800             # show an older "found" as stale while Instagram is unavailable
+        decoy_verification_enabled: false
 
   github:
     enabled: true

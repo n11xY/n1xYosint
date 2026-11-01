@@ -63,6 +63,24 @@ redirect lands on as `"login_wall": "/accounts/login"`. A request that ends
 up there is then reported as "requires sign-in from this network" instead
 of being run through the found/not-found check.
 
+For a site whose not-found page can't be told apart reliably (it serves one
+generic page for real and nonexistent accounts, or a challenge page), match
+what only a real profile shows instead: `"found_text"` is a string or a list
+of strings that must *all* appear, `{}` in one stands for the username being
+checked, and the page is also matched after decoding HTML entities. Such an
+entry is classified strictly: a page without the markers is reported as
+"couldn't tell", never as not found, unless you also declare a verified
+not-found signal (`"not_found_text"` or `"not_found_status"`).
+`"username_pattern"` (a regex) skips usernames the platform can't have
+without sending a request, and `"lowercase": true` normalizes case first for
+platforms whose usernames are case-insensitive. Instagram's entry uses all
+three.
+
+A site that needs its own request handling (spacing, concurrency, cooldown,
+result caching, no decoy) gets it in config, not in code:
+`sources.username_sites.site_settings.<site name>` -- see
+`config/config.example.yaml` for the keys and Instagram's defaults.
+
 **Before opening a PR, verify the entry against both a real, known-existing
 account and a username you're confident doesn't exist** (e.g. a long
 random string) — curl both URLs and confirm the check actually

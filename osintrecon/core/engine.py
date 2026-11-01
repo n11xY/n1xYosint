@@ -38,6 +38,9 @@ class RunResult:
     entities: list[Entity] = field(default_factory=list)
     stats: RunStats = field(default_factory=RunStats)
     rejected_inputs: list[tuple[str, str]] = field(default_factory=list)
+    # Request counters for sources with their own request policy (e.g.
+    # username_sites:Instagram) -- see AsyncHttpClient.metrics_snapshot().
+    source_metrics: dict[str, dict] = field(default_factory=dict)
 
 
 class Engine:
@@ -122,6 +125,7 @@ class Engine:
             # to fetch the images.
             all_findings.extend(await find_avatar_matches(all_findings, http))
 
+            source_metrics = http.metrics_snapshot()
             cache.close()
 
         scored, duplicates_removed = dedup_and_score(all_findings)
@@ -131,7 +135,7 @@ class Engine:
         self.stats.duplicates_removed = duplicates_removed
         self.stats.end_time = self.stats.end_time or time.time()
 
-        return RunResult(findings=scored, entities=entities, stats=self.stats)
+        return RunResult(findings=scored, entities=entities, stats=self.stats, source_metrics=source_metrics)
 
     @staticmethod
     def _collect_new_identifiers(

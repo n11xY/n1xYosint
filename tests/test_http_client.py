@@ -1,5 +1,6 @@
 import asyncio
 
+import pytest
 from aiohttp import web
 
 from osintrecon.core.cache import ResponseCache
@@ -139,3 +140,116 @@ def test_final_url_after_redirect_survives_a_cache_hit(tmp_path):
     assert cached.cached is True
     assert fresh.url.endswith("/accounts/login/")
     assert cached.url == fresh.url
+
+
+# -- per-source policies ---------------------------------------------------
+
+def test_retry_after_parser_accepts_seconds_and_http_dates():
+    import email.utils
+    import time
+
+    from osintrecon.core.http_client import _parse_retry_after
+
+    now = time.time()
+    assert _parse_retry_after("120") == 120
+    assert _parse_retry_after(email.utils.formatdate(now + 300, usegmt=True), now=now) == pytest.approx(300, abs=1)
+    assert _parse_retry_after(email.utils.formatdate(now - 300, usegmt=True), now=now) == 0
+    for unusable in (None, "", "soon", "-5", "inf", "nan"):
+        assert _parse_retry_after(unusable) is None
+
+
+def test_minimum_interval_spaces_requests_even_across_separate_runs(tmp_path):
+    from osintrecon.core.http_client import SourcePolicy
+
+    started: list[float] = []
+
+    async def stamp(request):
+        import time
+        started.append(time.monotonic())
+        return web.Response(text="ok")
+
+    async def scenario():
+        runner, base, _ = await _serve_routes({"/x": stamp})
+        cache = ResponseCache(str(tmp_path / "cache.sqlite3"))
+        try:
+            for _ in range(2):  # two runs, as two web searches would be
+                async with AsyncHttpClient(cache=cache) as http:
+                    http.set_source_policy("site", SourcePolicy(min_interval=0.4))
+                    await http.get("site", f"{base}/x", allow_cache=False)
+        finally:
+            cache.close()
+            await runner.cleanup()
+
+    asyncio.run(scenario())
+    assert len(started) == 2
+    assert started[1] - started[0] >= 0.35
+
+
+def test_identical_concurrent_requests_share_one_network_request():
+    async def slow(request):
+        await asyncio.sleep(0.2)
+        return web.Response(text="ok")
+
+    async def scenario():
+        runner, base, hits = await _serve_routes({"/x": slow})
+        try:
+            async with AsyncHttpClient() as http:
+                responses = await asyncio.gather(*(http.get("site", f"{base}/x") for _ in range(3)))
+                return responses, hits, http.source_metrics("site").duplicates_prevented
+        finally:
+            await runner.cleanup()
+
+    responses, hits, prevented = asyncio.run(scenario())
+    assert [r.status for r in responses] == [200, 200, 200]
+    assert hits["/x"] == 1
+    assert prevented == 2
+
+
+def test_per_source_timeout_applies_only_to_that_source():
+    from osintrecon.core.http_client import SourcePolicy
+
+    async def slow(request):
+        await asyncio.sleep(0.5)
+        return web.Response(text="ok")
+
+    async def scenario():
+        runner, base, _ = await _serve_routes({"/x": slow})
+        try:
+            async with AsyncHttpClient(timeout_seconds=5, retries=0) as http:
+                http.set_source_policy("impatient", SourcePolicy(request_timeout=0.1, persist_state=False))
+                impatient = await http.get("impatient", f"{base}/x")
+                patient = await http.get("patient", f"{base}/x")
+                return impatient, patient, http.source_metrics("impatient").network_errors
+        finally:
+            await runner.cleanup()
+
+    impatient, patient, errors = asyncio.run(scenario())
+    assert impatient.error is not None and errors == 1
+    assert patient.status == 200
+
+
+def test_metrics_log_line_carries_counters_only(caplog):
+    import logging
+
+    from osintrecon.core.http_client import SourcePolicy
+
+    async def scenario():
+        runner, base, _ = await _serve_routes({"/secret-path": _ok})
+        try:
+            async with AsyncHttpClient(default_headers={"Cookie": "sessionid=hunter2"}) as http:
+                http.set_source_policy("site", SourcePolicy(persist_state=False))
+                await http.get("site", f"{base}/secret-path?token=abc")
+        finally:
+            await runner.cleanup()
+
+    logger = logging.getLogger("n1xYosint")
+    previous = logger.propagate
+    logger.propagate = True
+    try:
+        with caplog.at_level(logging.INFO, logger="n1xYosint.http"):
+            asyncio.run(scenario())
+    finally:
+        logger.propagate = previous
+    lines = [r.getMessage() for r in caplog.records if "source metrics" in r.getMessage()]
+    assert len(lines) == 1 and "requests=1" in lines[0]
+    assert "hunter2" not in lines[0] and "token" not in lines[0] and "secret-path" not in lines[0]

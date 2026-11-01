@@ -48,6 +48,35 @@ DEFAULT_CONFIG: dict[str, Any] = {
             # config.yaml to re-enable if the site ever comes back.
             "enabled": False,
         },
+        "username_sites": {
+            # Per-site overrides, keyed by the site's name in sites.json
+            # (see username_sites.py). Instagram gets its own, deliberately
+            # cautious request handling: it rate-limits or login-walls
+            # anonymous traffic (hard from datacenter IPs), and every extra
+            # request makes that worse. None of these numbers are Instagram's
+            # limits -- it doesn't publish any -- they're conservative
+            # defaults, all overridable in config.yaml.
+            "site_settings": {
+                "Instagram": {
+                    "enabled": True,
+                    "max_concurrency": 1,              # one Instagram request at a time
+                    "request_timeout": 15,             # seconds
+                    "minimum_request_interval": 5,     # seconds between request starts, shared across runs
+                    "cooldown_duration": 900,          # after a 429/login wall with no Retry-After: 15 min,
+                    "max_cooldown_duration": 21600,    # doubling per consecutive one, capped at 6h
+                    "max_retry_attempts": 0,           # never re-ask within the same lookup
+                    "cache_ttl": 86400,                # "profile found" reused for 24h
+                    "negative_cache_ttl": 3600,        # "not found" reused for 1h
+                    "stale_ttl": 604800,               # a found profile shown as stale for up to 7 more days
+                                                       # while Instagram can't be re-checked
+                    # Instagram's profile marker includes the username itself,
+                    # so a decoy request can't catch anything it doesn't --
+                    # it would only spend another request on the most
+                    # rate-limited site in the database.
+                    "decoy_verification_enabled": False,
+                },
+            },
+        },
     },
     "plugins_dir": None,  # extra directory to load third-party plugins from
 }
