@@ -154,6 +154,24 @@ class UsernameSitesPlugin(SourcePlugin):
                 metadata={"http_status": resp.status},
             )
 
+        # Some platforms (confirmed: Instagram, from datacenter IPs) answer
+        # an anonymous profile request by redirecting to their login page
+        # instead of showing the profile or a 404. That says nothing about
+        # whether the account exists -- only that this network can't check
+        # without signing in, which this tool never does. Report it as
+        # exactly that, with the profile URL so a person can look by hand,
+        # rather than letting the login page fall through to the found /
+        # not-found heuristics. No decoy request is spent on it.
+        login_wall = site.get("login_wall")
+        if login_wall and login_wall in (resp.url or ""):
+            return Finding(
+                source=source_name, identifier=identifier, status=MatchStatus.ERROR,
+                source_url=url,
+                title=f"{site['name']}: requires sign-in from this network -- open the link to check by hand",
+                category=site.get("category", self.category),
+                metadata={"blocked": "login_wall", "http_status": resp.status, "redirected_to": resp.url},
+            )
+
         check_type = site.get("check", "status")
         found = _is_found(resp, site)
         status = (MatchStatus.CONFIRMED if check_type == "status" else MatchStatus.PROBABLE) if found else MatchStatus.NOT_FOUND

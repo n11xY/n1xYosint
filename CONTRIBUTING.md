@@ -57,6 +57,12 @@ status split), use a content check instead:
 {"name": "SiteName", "category": "social", "url": "https://example.com/{}", "check": "content", "not_found_text": "This page doesn't exist"}
 ```
 
+If a site answers anonymous requests from some networks by redirecting to
+its sign-in page (Instagram does this to datacenter IPs), add the path that
+redirect lands on as `"login_wall": "/accounts/login"`. A request that ends
+up there is then reported as "requires sign-in from this network" instead
+of being run through the found/not-found check.
+
 **Before opening a PR, verify the entry against both a real, known-existing
 account and a username you're confident doesn't exist** (e.g. a long
 random string) — curl both URLs and confirm the check actually

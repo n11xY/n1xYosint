@@ -1,7 +1,7 @@
 import asyncio
 from types import SimpleNamespace
 
-from osintrecon.core.models import Identifier, IdentifierType
+from osintrecon.core.models import Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.sources.username_sites import UsernameSitesPlugin, _decoy_username, _is_found
 
 STATUS_SITE = {"name": "Example", "url": "https://example.com/{}", "check": "status", "found_status": 200}
@@ -93,3 +93,35 @@ def test_identifier_value_is_url_encoded_before_formatting():
     requested_host_and_beyond = http.requested_urls[0].split("://", 1)[1]
     assert requested_host_and_beyond.startswith("evil.example.com%23")
     assert "#" not in http.requested_urls[0]
+
+
+class LoginWallHttp:
+    """Every request lands on the platform's sign-in page, as Instagram does
+    for anonymous requests from datacenter IPs."""
+
+    def __init__(self):
+        self.requested_urls = []
+
+    async def get(self, source, url, headers=None, expected_statuses=None):
+        self.requested_urls.append(url)
+        resp = FakeResp(status=200)
+        resp.url = "https://www.instagram.com/accounts/login/?next=%2Fsomeone%2F"
+        resp.text = "<title>Login • Instagram</title>"
+        return resp
+
+
+def test_login_wall_redirect_is_reported_as_blocked_not_as_a_result():
+    http = LoginWallHttp()
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [{
+        "name": "Instagram", "url": "https://www.instagram.com/{}/", "check": "message",
+        "not_found_text": "<title>Instagram</title>", "login_wall": "/accounts/login",
+    }]
+
+    findings = asyncio.run(plugin.run(Identifier(value="someone", type=IdentifierType.USERNAME)))
+
+    assert len(findings) == 1
+    assert findings[0].status == MatchStatus.ERROR
+    assert findings[0].metadata["blocked"] == "login_wall"
+    assert findings[0].source_url == "https://www.instagram.com/someone/"
+    assert len(http.requested_urls) == 1  # no decoy request spent on it

@@ -23,6 +23,27 @@ from osintrecon.core.models import RunStats
 
 log = get_logger("http")
 
+# Stored alongside a cached response's real headers (never sent anywhere).
+_FINAL_URL_HEADER = "X-N1xyosint-Final-Url"
+
+# A 429 is retried only when Retry-After asks for a wait no longer than this.
+_MAX_RETRY_AFTER_WAIT = 10
+# How long a source that sent a 429 without a usable Retry-After is left
+# alone for the rest of the run.
+_DEFAULT_429_COOLDOWN = 60
+
+
+def _parse_retry_after(value: Optional[str]) -> Optional[float]:
+    # Seconds only; the HTTP-date form is rare for the sites this tool hits
+    # and not worth parsing -- it's treated like no header at all.
+    if not value:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        return None
+    return seconds if seconds >= 0 else None
+
 
 @dataclass
 class HttpResponse:
@@ -82,6 +103,7 @@ class AsyncHttpClient:
         self.evidence_dir = Path(evidence_dir).expanduser() if evidence_dir else None
         self._session: Optional[aiohttp.ClientSession] = None
         self._semaphores: dict[str, asyncio.Semaphore] = {}
+        self._cooldown_until: dict[str, float] = {}
         # aiohttp's per-request `proxy=` kwarg only understands HTTP(S) proxies;
         # SOCKS4/5 (e.g. a local Tor instance on Kali) requires a dedicated
         # connector instead, provided by the aiohttp-socks package.
@@ -127,6 +149,10 @@ class AsyncHttpClient:
     async def __aexit__(self, *exc: Any) -> None:
         if self._session:
             await self._session.close()
+
+    def _cooling_down(self, source: str) -> bool:
+        until = self._cooldown_until.get(source)
+        return until is not None and time.monotonic() < until
 
     def _semaphore_for(self, source: str) -> asyncio.Semaphore:
         if source not in self._semaphores:
@@ -194,7 +220,10 @@ class AsyncHttpClient:
                     status=cached["status_code"],
                     text=cached["body"] or "",
                     headers=cached["headers"],
-                    url=url,
+                    # Where the request really ended up after redirects, so
+                    # a cache hit can still tell e.g. a login-wall redirect
+                    # apart from the profile page itself.
+                    url=cached["headers"].get(_FINAL_URL_HEADER, url),
                     ok=200 <= cached["status_code"] < 400,
                     cached=True,
                     content=(cached["body"] or "").encode("utf-8", errors="replace"),
@@ -205,6 +234,15 @@ class AsyncHttpClient:
 
         async with sem:
             for attempt in range(self.retries + 1):
+                # Checked inside the semaphore (and on every attempt) so
+                # requests that were already queued behind the one that got
+                # the 429 also stand down instead of firing anyway.
+                if self._cooling_down(source):
+                    log.debug("%s is cooling down after a 429, not sending %s", source, url)
+                    return HttpResponse(
+                        status=429, text="", headers={}, url=url,
+                        ok=bool(expected_statuses and 429 in expected_statuses),
+                    )
                 if self.stats:
                     self.stats.requests_sent += 1
                 try:
@@ -217,25 +255,25 @@ class AsyncHttpClient:
                         proxy=None if self._is_socks_proxy else self.proxy,
                         allow_redirects=True,
                     ) as resp:
-                        if resp.status == 429 and attempt < self.retries:
-                            # Rate-limited: worth a delayed retry rather than
-                            # giving up immediately. Respect Retry-After if
-                            # the server sent one (seconds; HTTP-date values
-                            # are rare for APIs and not worth parsing here),
-                            # otherwise fall back to the normal backoff,
-                            # capped so one slow site can't stall the run.
-                            retry_after = resp.headers.get("Retry-After")
-                            delay = self.retry_backoff ** attempt
-                            if retry_after:
-                                try:
-                                    delay = max(delay, float(retry_after))
-                                except ValueError:
-                                    pass
-                            delay = min(delay, 30)
-                            log.debug("429 from %s, retrying in %.1fs (attempt %d/%d)",
-                                      source, delay, attempt + 1, self.retries + 1)
-                            await asyncio.sleep(delay)
-                            continue
+                        if resp.status == 429:
+                            # Only retry when the server says how long to
+                            # wait and it's short. Retrying a bare 429 a
+                            # second later just spends more of a limit
+                            # that's already exhausted (and on some sites
+                            # lengthens the block), so otherwise stop, and
+                            # put the whole source on cooldown so the rest
+                            # of this run -- other identifiers, the decoy
+                            # check -- doesn't keep hitting it either.
+                            retry_after = _parse_retry_after(resp.headers.get("Retry-After"))
+                            if (retry_after is not None and retry_after <= _MAX_RETRY_AFTER_WAIT
+                                    and attempt < self.retries):
+                                log.debug("429 from %s, retrying in %.1fs as asked (attempt %d/%d)",
+                                          source, retry_after, attempt + 1, self.retries + 1)
+                                await asyncio.sleep(retry_after)
+                                continue
+                            cooldown = retry_after if retry_after is not None else _DEFAULT_429_COOLDOWN
+                            self._cooldown_until[source] = time.monotonic() + cooldown
+                            log.debug("429 from %s, cooling down for %.0fs", source, cooldown)
 
                         # .read() first, then .text() -- aiohttp buffers the
                         # body on first read, so this is one network read,
@@ -263,7 +301,8 @@ class AsyncHttpClient:
                         # stopped limiting us. Same reasoning as 5xx.
                         if (allow_cache and self.cache is not None and method.upper() == "GET"
                                 and resp.status < 500 and resp.status != 429):
-                            self.cache.put(source, method, url, resp.status, text, dict(resp.headers), cache_extra)
+                            self.cache.put(source, method, url, resp.status, text,
+                                           {**dict(resp.headers), _FINAL_URL_HEADER: str(resp.url)}, cache_extra)
 
                         response.evidence_path = await self._save_evidence(source, url, response)
                         return response
