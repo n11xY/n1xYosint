@@ -94,8 +94,27 @@ def _is_found(resp, site: dict) -> bool:
     check_type = site.get("check", "status")
     if check_type == "status":
         return resp.status == site.get("found_status", 200)
+    found_text = site.get("found_text")
+    if found_text:
+        return resp.status < 400 and found_text in resp.text
     not_found_text = site.get("not_found_text", "")
     return resp.status < 400 and bool(not_found_text) and not_found_text not in resp.text
+
+
+def _is_unreadable(resp, site: dict) -> bool:
+    """For a "found_text" entry: the page showed neither the profile marker
+    nor a recognisable not-found signal (an error shell, a bot challenge,
+    a page the site served identically for every username). Absence of the
+    profile marker alone is not evidence the account doesn't exist, so this
+    is reported as "couldn't tell" rather than as a quiet not-found."""
+    if not site.get("found_text") or _is_found(resp, site):
+        return False
+    not_found_text = site.get("not_found_text")
+    if not_found_text and not_found_text in resp.text:
+        return False
+    if "not_found_status" in site and resp.status == site["not_found_status"]:
+        return False
+    return True
 
 
 class UsernameSitesPlugin(SourcePlugin):
@@ -170,6 +189,15 @@ class UsernameSitesPlugin(SourcePlugin):
                 title=f"{site['name']}: requires sign-in from this network -- open the link to check by hand",
                 category=site.get("category", self.category),
                 metadata={"blocked": "login_wall", "http_status": resp.status, "redirected_to": resp.url},
+            )
+
+        if _is_unreadable(resp, site):
+            return Finding(
+                source=source_name, identifier=identifier, status=MatchStatus.ERROR,
+                source_url=url,
+                title=f"{site['name']}: couldn't tell -- the site didn't serve a readable profile page",
+                category=site.get("category", self.category),
+                metadata={"blocked": "unreadable_page", "http_status": resp.status},
             )
 
         check_type = site.get("check", "status")

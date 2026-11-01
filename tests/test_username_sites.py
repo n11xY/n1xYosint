@@ -125,3 +125,54 @@ def test_login_wall_redirect_is_reported_as_blocked_not_as_a_result():
     assert findings[0].metadata["blocked"] == "login_wall"
     assert findings[0].source_url == "https://www.instagram.com/someone/"
     assert len(http.requested_urls) == 1  # no decoy request spent on it
+
+
+class PageHttp:
+    def __init__(self, status, text):
+        self.status, self.text = status, text
+        self.requested_urls = []
+
+    async def get(self, source, url, headers=None, expected_statuses=None):
+        self.requested_urls.append(url)
+        resp = FakeResp(status=self.status)
+        resp.url = url
+        resp.text = self.text
+        return resp
+
+
+FOUND_TEXT_SITE = {
+    "name": "Instagram", "url": "https://www.instagram.com/{}/", "check": "message",
+    "found_text": "Instagram photos and videos",
+}
+
+
+def test_found_text_site_reports_an_unrecognisable_page_as_unreadable_not_as_absent():
+    # Instagram's anonymous "httpErrorPage" shell, served identically for
+    # real and nonexistent accounts.
+    http = PageHttp(200, "<title>Instagram</title> ... \"pageID\":\"httpErrorPage\"")
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [FOUND_TEXT_SITE]
+
+    findings = asyncio.run(plugin.run(Identifier(value="someone", type=IdentifierType.USERNAME)))
+
+    assert len(findings) == 1
+    assert findings[0].status == MatchStatus.ERROR
+    assert findings[0].metadata["blocked"] == "unreadable_page"
+    assert len(http.requested_urls) == 1
+
+
+def test_found_text_site_matches_on_the_profile_marker():
+    assert _is_found(_resp(200, "<title>Cristiano (@cristiano) • Instagram photos and videos</title>"), FOUND_TEXT_SITE)
+    assert not _is_found(_resp(200, "<title>Instagram</title>"), FOUND_TEXT_SITE)
+    assert not _is_found(_resp(404, "Instagram photos and videos"), FOUND_TEXT_SITE)
+
+
+def test_found_text_site_with_a_known_not_found_marker_stays_quiet():
+    site = {**FOUND_TEXT_SITE, "not_found_text": "Sorry, this page isn't available."}
+    http = PageHttp(200, "Sorry, this page isn't available.")
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [site]
+
+    findings = asyncio.run(plugin.run(Identifier(value="someone", type=IdentifierType.USERNAME)))
+
+    assert findings == []

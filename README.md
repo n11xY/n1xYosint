@@ -103,7 +103,7 @@ configuration.
 | `username_sites` | social/various | username | 93-site database (`config/sites.json`); every apparent match is cross-checked against a random nonexistent decoy username on the same site before being reported, downgrading to `uncertain` if the decoy also "matches" (site's signal isn't reliable right now) |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
 | `github_commit_email` | code-hosting | username | free, no key — GitHub's commit search API; finds a real commit-author email even when it's hidden from the profile (optional GitHub PAT raises the search API's tighter 10/min rate limit) |
-| `wayback` | archive | url | free, no key — Internet Archive's CDX API; archive history for a discovered URL (e.g. a GitHub profile's linked blog) |
+| `wayback` | archive | url, username | free, no key — Internet Archive's CDX API; archive history for a discovered URL (e.g. a GitHub profile's linked blog), and for a username's Instagram profile URL, since Instagram can't be checked directly (always `uncertain`; Instagram itself is never contacted) |
 | `roblox` / `minecraft` / `bluesky` / `anilist` | social | username | official public APIs |
 | `hackernews` | forum | username | free, no key — official Firebase-backed HN API, upgrades the heuristic site check to a confirmed API result with real karma/account-age data |
 | `devto` | forum | username | free, no key — official DEV.to API; discovers linked GitHub/Twitter usernames for `--depth` enrichment |

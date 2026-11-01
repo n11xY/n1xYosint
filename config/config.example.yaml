@@ -50,6 +50,8 @@ sources:
 
   wayback:
     enabled: true               # free, no key -- Internet Archive's CDX API
+    profile_urls:               # usernames: profile URLs to look up in the archive, for platforms
+      Instagram: "instagram.com/{}/"   # that can't be checked directly (always reported as uncertain)
 
   gitlab:
     enabled: true
