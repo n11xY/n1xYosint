@@ -77,6 +77,12 @@ platforms whose usernames are case-insensitive. Instagram's entry uses all
 three. When `"url"` is a JSON API rather than the profile page, add
 `"profile_url"` (same `{}` placeholder): it's the link a finding shows,
 while `"url"` stays the one that's checked.
+`"browser_headers": false` sends the client's own honest User-Agent instead
+of the browser imitation, for sites whose bot check challenges the latter
+(Last.fm serves the same "Client Challenge" page for every username to it).
+From datacenter IPs Last.fm challenges the honest one too, so its entry also
+requires a profile marker: a challenge page reads as "couldn't tell", never
+as a found account.
 
 Before adding a site, check [docs/SOURCES.md](docs/SOURCES.md): a platform
 already covered under another name, URL or plugin (or one that shares its
