@@ -221,3 +221,45 @@ def test_site_database_entries_are_well_formed_and_unique():
             assert site["profile_url"].count("{}") == 1, site["name"]
         if site["check"] == "message":
             assert site.get("not_found_text") or site.get("found_text"), site["name"]
+
+
+class HeaderHttp:
+    def __init__(self):
+        self.headers = []
+
+    async def get(self, source, url, headers=None, expected_statuses=None):
+        self.headers.append(headers)
+        resp = FakeResp(status=404 if "nx1" in url else 200)
+        resp.url = url
+        return resp
+
+
+def test_browser_headers_can_be_turned_off_per_site():
+    http = HeaderHttp()
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [
+        {"name": "Plain", "url": "https://a.example/{}", "check": "status", "found_status": 200,
+         "not_found_status": 404, "browser_headers": False},
+        {"name": "Browser", "url": "https://b.example/{}", "check": "status", "found_status": 200,
+         "not_found_status": 404},
+    ]
+
+    findings = asyncio.run(plugin.run(Identifier(value="alice", type=IdentifierType.USERNAME)))
+
+    assert len(findings) == 2
+    assert None in http.headers  # the client's own User-Agent for "Plain" (and its decoy)
+    assert any(h and "Chrome" in h["User-Agent"] for h in http.headers)
+
+
+def test_lastfm_challenge_page_is_unreadable_not_a_found_account():
+    from osintrecon.plugins.sources.username_sites import LookupOutcome, _classify
+
+    sites = json.loads((Path(__file__).resolve().parents[1] / "config" / "sites.json").read_text(encoding="utf-8"))
+    site = next(s for s in sites if s["name"] == "Last.fm")
+    challenge = SimpleNamespace(status=200, text="<title>Client Challenge</title>", error=None, url="")
+    profile = SimpleNamespace(status=200, error=None, url="",
+                              text='<link rel="canonical" href="https://www.last.fm/user/Alice" data-x />')
+
+    assert _classify(challenge, site, "Alice") is LookupOutcome.UNKNOWN
+    assert _classify(profile, site, "Alice") is LookupOutcome.PROFILE_FOUND
+    assert _classify(SimpleNamespace(status=404, text="", error=None, url=""), site, "Alice") is LookupOutcome.NOT_FOUND

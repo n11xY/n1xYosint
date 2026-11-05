@@ -294,6 +294,21 @@ New plugin:
   checks a JSON API still links to the page a person would open.
 - **Default User-Agent** now carries the project URL; Wikimedia refuses
   API requests whose User-Agent has no contact information.
+- **`"browser_headers": false`** (2026-11-05, later): Codeberg, Liberapay,
+  DevPost, osu!, Slashdot and Mixcloud answered every lookup with a bot
+  challenge (HTTP 403) when sent the browser imitation, and answer
+  correctly to the client's honest User-Agent, checked from both a home
+  connection and the production server. Last.fm likewise, from a home
+  connection; from the server's datacenter IP it challenges both, so its
+  entry also requires a profile marker (the canonical link, which echoes
+  the username) and a challenge page reads as "couldn't tell" instead of
+  as an account for every username.
+- **Still blocked by bot protection** with either User-Agent (reported as
+  "couldn't tell", never as absent): npm, Medium, Letterboxd, Product Hunt,
+  ArtStation, CodePen, Speedrun.com (the `speedrun_com` API plugin still
+  works), Lichess (`lichess` plugin still works), Discogs, VSCO,
+  LibraryThing, SourceForge, Unsplash, BeerAdvocate, Rumble, Peerlist,
+  Giant Bomb, Backloggd, Reddit, Tumblr, Newgrounds. Not circumvented.
 
 ## Rejected duplicates
 

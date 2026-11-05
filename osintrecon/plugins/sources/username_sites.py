@@ -113,6 +113,14 @@ _BROWSER_HEADERS = {
 }
 
 
+def _headers_for(site: dict) -> Optional[dict[str, str]]:
+    """The browser headers above, unless the entry says "browser_headers":
+    false -- for sites whose bot check challenges a browser User-Agent that
+    doesn't behave like a browser (Last.fm serves a "Client Challenge" page
+    to it for every username) while answering the client's own honest one."""
+    return _BROWSER_HEADERS if site.get("browser_headers", True) else None
+
+
 class LookupOutcome(str, Enum):
     """What one lookup established about one username on one site."""
 
@@ -420,7 +428,7 @@ class UsernameSitesPlugin(SourcePlugin):
             return self._lookup_from_store(stored, "cached")
 
         get_kwargs = {"allow_cache": False} if settings.cache_ttl is not None else {}
-        resp = await self.http.get(source_name, url, headers=_BROWSER_HEADERS, expected_statuses={404}, **get_kwargs)
+        resp = await self.http.get(source_name, url, headers=_headers_for(site), expected_statuses={404}, **get_kwargs)
         outcome = _classify(resp, site, value)
         collected_at = getattr(resp, "fetched_at", None) or time.time()
 
@@ -479,7 +487,7 @@ class UsernameSitesPlugin(SourcePlugin):
         """(metadata note, whether the decoy also looked found)."""
         decoy_url = site["url"].format(quote(decoy, safe=""))
         await asyncio.sleep(random.uniform(*_JITTER_SECONDS))
-        decoy_resp = await self.http.get(source_name, decoy_url, headers=_BROWSER_HEADERS,
+        decoy_resp = await self.http.get(source_name, decoy_url, headers=_headers_for(site),
                                          expected_statuses={404}, **get_kwargs)
         decoy_outcome = _classify(decoy_resp, site, decoy)
         if decoy_outcome is LookupOutcome.PROFILE_FOUND:
