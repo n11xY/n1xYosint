@@ -57,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
                          help="How much each NAME-based source (orcid/openalex/crossref/"
                               "github_name_search/wikipedia) does per identifier: result caps, and "
                               "in 'deep' an extra name-order variant. Unrelated to --depth. Default: normal.")
+    parser.add_argument("--include-adult", action="store_true",
+                        help="Also check the adult sites in the username database (off by default)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase log verbosity (-v, -vv)")
     parser.add_argument("--log-file", help="Write full logs to this file")
     return parser
@@ -92,6 +94,8 @@ def _apply_cli_overrides(config: Config, args: argparse.Namespace) -> None:
         config.data.setdefault("cache", {})["enabled"] = False
     if args.save_evidence:
         config.data.setdefault("evidence", {})["save_raw"] = True
+    if args.include_adult:
+        config.data.setdefault("sources", {}).setdefault("username_sites", {})["include_adult"] = True
 
 
 def main(argv: list[str] | None = None) -> int:

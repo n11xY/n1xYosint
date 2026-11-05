@@ -321,6 +321,11 @@ class UsernameSitesPlugin(SourcePlugin):
         super().__init__(config, http)
         sites_path = Path(config.get("sites_db") or DEFAULT_SITES_PATH)
         self.sites = _load_sites(sites_path)
+        # Adult sites ("nsfw": true) are opt-in: looking a username up on them
+        # should be a deliberate choice by whoever runs the search, not
+        # something every search does (include_adult, or --include-adult).
+        if not config.get("include_adult", False):
+            self.sites = [site for site in self.sites if not site.get("nsfw")]
         self.site_settings: dict[str, SiteSettings] = {}
         for site_name, raw in (config.get("site_settings") or {}).items():
             if not isinstance(raw, dict):
