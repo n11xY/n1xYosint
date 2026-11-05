@@ -1,4 +1,6 @@
 import asyncio
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 from osintrecon.core.models import Identifier, IdentifierType, MatchStatus
@@ -176,3 +178,46 @@ def test_found_text_site_with_a_known_not_found_marker_stays_quiet():
     findings = asyncio.run(plugin.run(Identifier(value="someone", type=IdentifierType.USERNAME)))
 
     assert findings == []
+
+
+class ApiHttp:
+    """200 for the real account, 404 for the decoy."""
+
+    def __init__(self):
+        self.requested_urls = []
+
+    async def get(self, source, url, headers=None, expected_statuses=None):
+        self.requested_urls.append(url)
+        resp = FakeResp(status=404 if "nx1" in url else 200)
+        resp.url = url
+        return resp
+
+
+def test_profile_url_is_the_link_shown_for_an_api_checked_site():
+    http = ApiHttp()
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [{
+        "name": "Example", "url": "https://api.example.com/users/{}", "check": "status",
+        "found_status": 200, "not_found_status": 404, "profile_url": "https://example.com/@{}",
+    }]
+
+    findings = asyncio.run(plugin.run(Identifier(value="alice", type=IdentifierType.USERNAME)))
+
+    assert len(findings) == 1
+    assert findings[0].status == MatchStatus.CONFIRMED
+    assert findings[0].source_url == "https://example.com/@alice"
+    assert findings[0].metadata["checked_url"] == "https://api.example.com/users/alice"
+    assert http.requested_urls[0] == "https://api.example.com/users/alice"
+
+
+def test_site_database_entries_are_well_formed_and_unique():
+    sites = json.loads((Path(__file__).resolve().parents[1] / "config" / "sites.json").read_text(encoding="utf-8"))
+    names = [s["name"].lower() for s in sites]
+    assert len(names) == len(set(names))
+    for site in sites:
+        assert site["url"].count("{}") == 1, site["name"]
+        assert site["check"] in ("status", "message"), site["name"]
+        if "profile_url" in site:
+            assert site["profile_url"].count("{}") == 1, site["name"]
+        if site["check"] == "message":
+            assert site.get("not_found_text") or site.get("found_text"), site["name"]

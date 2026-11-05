@@ -378,11 +378,14 @@ class UsernameSitesPlugin(SourcePlugin):
         # character could change which request actually gets sent.
         # safe="" so a value can never introduce a new URL path segment.
         url = site["url"].format(quote(value, safe=""))
+        # Entries that check a JSON API name the page a person would open
+        # in "profile_url"; that's the link a finding shows.
+        profile_url = site["profile_url"].format(quote(value, safe="")) if site.get("profile_url") else url
         source_name = self._source_name(site["name"])
         lookup = await self._shared_lookup(
             source_name, value, lambda: self._lookup(site, source_name, value, url, settings, decoy)
         )
-        return self._finding(site, identifier, url, lookup)
+        return self._finding(site, identifier, url, lookup, profile_url)
 
     async def _shared_lookup(self, source_name: str, value: str,
                              start: Callable[[], Awaitable[_Lookup]]) -> _Lookup:
@@ -504,9 +507,11 @@ class UsernameSitesPlugin(SourcePlugin):
             request_sent=False,
         )
 
-    def _finding(self, site: dict, identifier: Identifier, url: str, lookup: _Lookup) -> Finding | None:
+    def _finding(self, site: dict, identifier: Identifier, url: str, lookup: _Lookup,
+                 profile_url: Optional[str] = None) -> Finding | None:
+        shown_url = profile_url or url
         if lookup.freshness == "unavailable":
-            return self._unavailable_finding(site, identifier, url, lookup)
+            return self._unavailable_finding(site, identifier, shown_url, lookup)
         if lookup.outcome is not LookupOutcome.PROFILE_FOUND:
             return None  # don't clutter results with every non-match
 
@@ -520,6 +525,8 @@ class UsernameSitesPlugin(SourcePlugin):
             "freshness": lookup.freshness,
             "collected_at": _iso(lookup.collected_at),
         }
+        if shown_url != url:
+            metadata["checked_url"] = url
         if lookup.expires_at:
             metadata["cache_expires_at"] = _iso(lookup.expires_at)
 
@@ -545,7 +552,7 @@ class UsernameSitesPlugin(SourcePlugin):
             source=self._source_name(site_name),
             identifier=identifier,
             status=status,
-            source_url=url,
+            source_url=shown_url,
             title=title,
             category=site.get("category", self.category),
             metadata=metadata,

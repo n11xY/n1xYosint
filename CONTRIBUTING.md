@@ -74,7 +74,14 @@ not-found signal (`"not_found_text"` or `"not_found_status"`).
 `"username_pattern"` (a regex) skips usernames the platform can't have
 without sending a request, and `"lowercase": true` normalizes case first for
 platforms whose usernames are case-insensitive. Instagram's entry uses all
-three.
+three. When `"url"` is a JSON API rather than the profile page, add
+`"profile_url"` (same `{}` placeholder): it's the link a finding shows,
+while `"url"` stays the one that's checked.
+
+Before adding a site, check [docs/SOURCES.md](docs/SOURCES.md): a platform
+already covered under another name, URL or plugin (or one that shares its
+accounts with a covered one) doesn't get a second entry, and platforms
+already tried and rejected are listed there with the reason.
 
 A site that needs its own request handling (spacing, concurrency, cooldown,
 result caching, no decoy) gets it in config, not in code:
