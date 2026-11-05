@@ -9,8 +9,14 @@ description = "Modular, CLI-first OSINT reconnaissance framework for username/em
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
+# Floors are security floors as well as feature floors (pip-audit,
+# 2026-11-05): aiohttp 3.14.4 and certifi 2026.10.18 -- the latter drops a
+# root CA whose intermediate keys were compromised; every HTTPS check here
+# trusts that bundle. Pillow 13 fixes 39 issues with crafted images, and
+# avatar correlation decodes images from arbitrary sites.
 dependencies = [
-    "aiohttp>=3.9",
+    "aiohttp>=3.14.4",
+    "certifi>=2026.10.18",
     "aiohttp-socks>=0.9",
     "PyYAML>=6.0",
     "rich>=13.7",
@@ -21,9 +27,9 @@ dependencies = [
 # Pillow/imagehash included here too (not just in the `imagehash` extra
 # below) so CI's `pip install -e ".[dev]"` actually exercises
 # test_avatar_correlation.py instead of it silently skipping everywhere.
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "Pillow>=10.0", "imagehash>=4.3"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "Pillow>=13.0", "imagehash>=4.3", "ruff>=0.6", "pip-audit>=2.7"]
 holehe = ["holehe", "httpx"]
-imagehash = ["Pillow>=10.0", "imagehash>=4.3"]
+imagehash = ["Pillow>=13.0", "imagehash>=4.3"]
 
 [project.scripts]
 n1xyosint = "osintrecon.cli:main"
@@ -33,3 +39,12 @@ include = ["osintrecon*"]
 
 [tool.setuptools.package-data]
 osintrecon = []
+
+# Pinned here so CI and every machine lint the same way, whatever ruff
+# configuration a contributor has globally: real errors only (syntax,
+# undefined names, unused imports), not style.
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

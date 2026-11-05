@@ -23,10 +23,14 @@ from __future__ import annotations
 
 import importlib.util
 from io import BytesIO
+from typing import TYPE_CHECKING
 
 from osintrecon.core.http_client import AsyncHttpClient
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Finding, Identifier, MatchStatus
+
+if TYPE_CHECKING:  # optional dependency: imported for real only inside find_avatar_matches
+    import imagehash
 
 log = get_logger("avatar_correlation")
 
@@ -39,6 +43,12 @@ HAMMING_THRESHOLD = 6
 
 def available() -> bool:
     return importlib.util.find_spec("PIL") is not None and importlib.util.find_spec("imagehash") is not None
+
+
+# Profile pictures are small; these bound what a hostile "avatar" URL can
+# cost: the bytes downloaded, and the canvas Pillow is allowed to decode.
+AVATAR_MAX_BYTES = 2 * 1024 * 1024
+AVATAR_MAX_PIXELS = 4096 * 4096
 
 
 async def find_avatar_matches(findings: list[Finding], http: AsyncHttpClient) -> list[Finding]:
@@ -71,11 +81,17 @@ async def find_avatar_matches(findings: list[Finding], http: AsyncHttpClient) ->
     for ident, url in candidates:
         # Never cache binary content through the (text-oriented) response
         # cache -- see HttpResponse.content's docstring.
-        resp = await http.get("avatar_hash", url, allow_cache=False)
+        resp = await http.get("avatar_hash", url, allow_cache=False, max_bytes=AVATAR_MAX_BYTES)
         if resp.error is not None or resp.status != 200 or not resp.content:
             continue
         try:
-            hashes[(ident, url)] = imagehash.average_hash(Image.open(BytesIO(resp.content)))
+            with Image.open(BytesIO(resp.content)) as img:
+                # The header's dimensions, checked before decoding a pixel: a
+                # tiny file can declare a huge canvas (a decompression bomb).
+                if img.width * img.height > AVATAR_MAX_PIXELS:
+                    log.debug("avatar at %s declares %dx%d, skipped", url, img.width, img.height)
+                    continue
+                hashes[(ident, url)] = imagehash.average_hash(img)
         except Exception as exc:  # noqa: BLE001 -- not every URL is a decodable image
             log.debug("avatar hash failed for %s: %s", url, exc)
             continue
