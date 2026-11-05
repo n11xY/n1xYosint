@@ -49,6 +49,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "enabled": False,
         },
         "username_sites": {
+            # Sites marked "nsfw" in sites.json are skipped unless this is
+            # true (or --include-adult is given).
+            "include_adult": False,
             # Per-site overrides, keyed by the site's name in sites.json
             # (see username_sites.py). Instagram gets its own, deliberately
             # cautious request handling: it rate-limits or login-walls

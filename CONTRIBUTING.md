@@ -80,6 +80,10 @@ while `"url"` stays the one that's checked.
 `"browser_headers": false` sends the client's own honest User-Agent instead
 of the browser imitation, for sites whose bot check challenges the latter
 (Last.fm serves the same "Client Challenge" page for every username to it).
+Adult sites take `"category": "adult"` and `"nsfw": true`; they are only
+checked when the run opts in (`--include-adult`). Several are blocked by
+law in some countries, so prefer a strict entry (`found_text` plus
+`not_found_status`) where a block page could otherwise read as "no account".
 From datacenter IPs Last.fm challenges the honest one too, so its entry also
 requires a profile marker: a challenge page reads as "couldn't tell", never
 as a found account.

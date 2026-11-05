@@ -263,3 +263,23 @@ def test_lastfm_challenge_page_is_unreadable_not_a_found_account():
     assert _classify(challenge, site, "Alice") is LookupOutcome.UNKNOWN
     assert _classify(profile, site, "Alice") is LookupOutcome.PROFILE_FOUND
     assert _classify(SimpleNamespace(status=404, text="", error=None, url=""), site, "Alice") is LookupOutcome.NOT_FOUND
+
+
+def test_adult_sites_are_skipped_unless_included():
+    sites = json.loads((Path(__file__).resolve().parents[1] / "config" / "sites.json").read_text(encoding="utf-8"))
+    adult = {s["name"] for s in sites if s.get("nsfw")}
+    assert adult and all(s["category"] == "adult" for s in sites if s.get("nsfw"))
+
+    default = {s["name"] for s in UsernameSitesPlugin(config={}, http=FakeHttp()).sites}
+    included = {s["name"] for s in UsernameSitesPlugin(config={"include_adult": True}, http=FakeHttp()).sites}
+
+    assert not default & adult
+    assert adult <= included
+    assert included - adult == default
+
+
+def test_include_adult_flag_reaches_username_sites_config():
+    from osintrecon.cli import build_parser
+
+    args = build_parser().parse_args(["-u", "alice", "--include-adult"])
+    assert args.include_adult is True

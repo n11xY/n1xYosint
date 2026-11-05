@@ -14,7 +14,7 @@ sections after them are written, not generated.
 
 | | Before | After |
 |---|---:|---:|
-| `username_sites` entries (`config/sites.json`) | 100 | 127 |
+| `username_sites` entries (`config/sites.json`) | 100 | 157 (10 adult, opt-in) |
 | Dedicated source plugins (besides `username_sites`) | 42 | 43 |
 
 The README said 93 sites before this expansion; the file actually held 100.
@@ -309,6 +309,74 @@ New plugin:
   works), Lichess (`lichess` plugin still works), Discogs, VSCO,
   LibraryThing, SourceForge, Unsplash, BeerAdvocate, Rumble, Peerlist,
   Giant Bomb, Backloggd, Reddit, Tumblr, Newgrounds. Not circumvented.
+
+## Second batch (2026-11-05)
+
+Checked like the first batch (end to end locally, real account found and
+decoy-checked, random name not found), and also with curl from the
+production server.
+
+| Platform | What it is | Endpoint | Notes |
+|---|---|---|---|
+| Picarto | art streaming | `api.picarto.tv/api/v1/channel/name/{}` | official API |
+| GameJolt | indie games | `gamejolt.com/site-api/web/profile/@{}/` | |
+| Imgflip | memes | `imgflip.com/user/{}` | |
+| Onedio | social media (TR) | `onedio.com/profil/{}` | |
+| Bionluk | freelancing (TR) | `bionluk.com/{}` | |
+| Pikabu | community (RU) | `pikabu.ru/@{}` | |
+| OK.ru | social network (RU) | `ok.ru/{}` | separate accounts from VK |
+| Tildes | forum | `tildes.net/user/{}` | |
+| Velog | developer blogging (KR) | `velog.io/@{}` | lowercase names |
+| Naver Blog | blogging (KR) | `blog.naver.com/{}` | lowercase IDs |
+| Tistory | blogging (KR) | `{}.tistory.com` | |
+| Ameba | blogging (JP) | `ameblo.jp/{}/` | lowercase IDs |
+| Write.as | blogging | `write.as/{}` | |
+| Micro.blog | microblogging | `micro.blog/{}` | |
+| Bear Blog | blogging | `{}.bearblog.dev` | |
+| Mataroa | blogging | `{}.mataroa.blog` | |
+| Neocities | web hosting | `{}.neocities.org` | |
+| Ollama | model hosting | `ollama.com/{}` | distinct from Hugging Face |
+| Replicate | model hosting | `replicate.com/{}` | |
+| iNaturalist | nature observations | `api.inaturalist.org/v1/users/{}` | official API |
+
+Turned down in this batch: FurAffinity and solo.to (work from a home
+connection, HTTP 403 from the server), Brunch (redirect loop from the
+server, which would read as "no account"), Coub, Giphy, YouPorn (real and
+nonexistent names look the same), Codecademy, Anaconda, Snapcraft,
+Monzo, MyFreeCams, TwitCasting, Inkbunny, WordPress.com, Uludağ Sözlük,
+DLive, Revolut, Taplink, Cam4, freeCodeCamp, FanCentro (same status for
+both; not-found only visible in the page or redirect), PSNProfiles,
+Civitai, 9GAG, Weasyl, 1000Kitap, StoryGraph, Ekşi Sözlük, SpankBang,
+Lnk.bio, RetroAchievements (bot protection), GNOME and KDE GitLab, Salsa,
+freedesktop GitLab, AUR, Hentai Foundry (API refused, sign-in or bot
+challenge), LiveJournal, Dreamwidth (timeouts).
+
+## Adult sites (opt-in)
+
+Marked `"nsfw": true`, category `adult`, and skipped unless the run opts in
+(`--include-adult`, or `sources.username_sites.include_adult: true`), so no
+search checks them by accident. Verified 2026-11-05 from the production
+server (and from a home connection where the site is reachable).
+
+| Platform | Endpoint | Notes |
+|---|---|---|
+| Pornhub | `pornhub.com/users/{}` | strict: requires the profile's canonical link; blocked (HTTP 410) in several countries, which reads as "couldn't tell" |
+| Fansly | `apiv3.fansly.com/api/v1/account?usernames={}` | JSON; `"response":[]` when absent, so `probable` |
+| xHamster | `xhamster.com/users/{}` | |
+| XVideos | `xvideos.com/profiles/{}` | case-sensitive, lowercase names |
+| Eporner | `eporner.com/profile/{}/` | |
+| RedTube | `redtube.com/users/{}` | redirects a real name to its numeric profile |
+| Fanvue | `fanvue.com/{}` | |
+| NiteFlirt | `niteflirt.com/{}` | |
+| Literotica | `literotica.com/authors/{}` | |
+| e621 | `e621.net/users/{}.json` | JSON API; profile link `e621.net/users/{}` |
+
+Rejected: OnlyFans, ManyVids, LoyalFans (same client-rendered page for real
+and nonexistent names), JustFor.Fans (not-found is only a redirect URL
+parameter), Chaturbate (same page from the server), Stripchat, CamSoda,
+BongaCams, Fetlife (bot protection or sign-in), Motherless (does not
+resolve), Erome, RedGifs, Clips4Sale, XNXX (real accounts not
+distinguishable from nonexistent ones).
 
 ## Rejected duplicates
 
