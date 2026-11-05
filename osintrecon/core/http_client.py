@@ -59,6 +59,44 @@ _MAX_RETRY_AFTER_WAIT = 10
 _DEFAULT_429_COOLDOWN = 60
 _DEFAULT_MAX_COOLDOWN = 3600
 
+# The most body any one response may bring in. Every source here answers
+# with a page or a JSON document far below this; a body past it is a
+# misbehaving or hostile server (an endless stream, a decompression bomb
+# behind a "profile picture" URL), and reading it whole would only spend
+# memory. A caller can ask for less (avatar images do), never more.
+DEFAULT_MAX_BODY_BYTES = 8 * 1024 * 1024
+_READ_CHUNK = 64 * 1024
+
+
+class _BodyTooLarge(Exception):
+    pass
+
+
+async def _read_capped(resp: "aiohttp.ClientResponse", limit: int) -> bytes:
+    """The body, read in chunks and abandoned the moment it passes the
+    limit -- a declared Content-Length over it is refused before reading at
+    all (and a lying one is still caught by the running count)."""
+    declared = resp.content_length
+    if declared is not None and declared > limit:
+        raise _BodyTooLarge()
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in resp.content.iter_chunked(_READ_CHUNK):
+        size += len(chunk)
+        if size > limit:
+            raise _BodyTooLarge()
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _decode(resp: "aiohttp.ClientResponse", raw: bytes) -> str:
+    # What resp.text() does, without reading the body a second time:
+    # the declared charset, else UTF-8 (aiohttp's own fallback).
+    try:
+        return raw.decode(resp.charset or "utf-8", errors="replace")
+    except LookupError:  # a charset name Python doesn't know
+        return raw.decode("utf-8", errors="replace")
+
 
 def _parse_retry_after(value: Optional[str], now: Optional[float] = None) -> Optional[float]:
     """Seconds to wait, from a Retry-After header in either of its two
@@ -206,8 +244,10 @@ class AsyncHttpClient:
         stats: Optional[RunStats] = None,
         save_evidence: bool = False,
         evidence_dir: Optional[str] = None,
+        max_body_bytes: int = DEFAULT_MAX_BODY_BYTES,
     ):
         self.timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+        self.max_body_bytes = max_body_bytes
         self.retries = retries
         self.retry_backoff = retry_backoff
         self.user_agent = user_agent
@@ -458,8 +498,14 @@ class AsyncHttpClient:
         json_body: Optional[dict[str, Any]] = None,
         allow_cache: bool = True,
         expected_statuses: Optional[set[int]] = None,
+        max_bytes: Optional[int] = None,
     ) -> HttpResponse:
-        """Perform a single request with caching, retries, and per-source rate limiting."""
+        """Perform a single request with caching, retries, and per-source rate limiting.
+
+        max_bytes lowers the body size cap for this request (never raises it
+        past the client's max_body_bytes); a bigger body comes back as an
+        error response, not as truncated content."""
+        limit = self.max_body_bytes if max_bytes is None else min(max_bytes, self.max_body_bytes)
         assert self._session is not None, "AsyncHttpClient must be used as an async context manager"
 
         cache_extra = json.dumps(params or {}, sort_keys=True)
@@ -484,7 +530,8 @@ class AsyncHttpClient:
                 )
 
         send = self._send(source, method, url, headers=headers, params=params, json_body=json_body,
-                          allow_cache=allow_cache, expected_statuses=expected_statuses, cache_extra=cache_extra)
+                          allow_cache=allow_cache, expected_statuses=expected_statuses, cache_extra=cache_extra,
+                          max_bytes=limit)
 
         # Single-flight: an identical idempotent request already on its way
         # (same method, URL, query and extra headers) is joined instead of
@@ -492,7 +539,7 @@ class AsyncHttpClient:
         # profile URL, checked concurrently. Not for anything with a body.
         if method.upper() not in ("GET", "HEAD") or json_body is not None:
             return await send
-        key = (method.upper(), url, cache_extra, json.dumps(headers or {}, sort_keys=True), allow_cache)
+        key = (method.upper(), url, cache_extra, json.dumps(headers or {}, sort_keys=True), allow_cache, limit)
         inflight = self._inflight.get(key)
         if inflight is not None:
             send.close()
@@ -528,6 +575,7 @@ class AsyncHttpClient:
         allow_cache: bool,
         expected_statuses: Optional[set[int]],
         cache_extra: str,
+        max_bytes: int,
     ) -> HttpResponse:
         policy = self._policy(source)
         metrics = self.source_metrics(source)
@@ -606,8 +654,23 @@ class AsyncHttpClient:
                             # not two, and gives us both the raw bytes (needed
                             # for binary content like images) and the decoded
                             # text every other caller already relies on.
-                            raw = await resp.read()
-                            text = await resp.text(errors="replace")
+                            # Read once, capped (see _read_capped), and decode
+                            # the same bytes: raw for binary callers (avatar
+                            # images), text for everyone else.
+                            try:
+                                raw = await _read_capped(resp, max_bytes)
+                            except _BodyTooLarge:
+                                metrics.responses += 1
+                                metrics.total_response_seconds += time.monotonic() - started
+                                log.debug("%s: response over %d bytes from %s, not read", source, max_bytes, url)
+                                if self.stats:
+                                    self.stats.requests_failed += 1
+                                # Not retried: the same server would send the same body.
+                                return HttpResponse(status=resp.status, text="", headers=dict(resp.headers),
+                                                    url=str(resp.url), ok=False,
+                                                    error=f"response larger than {max_bytes} bytes",
+                                                    fetched_at=time.time(), cooldown_until=cooldown_until)
+                            text = _decode(resp, raw)
                             metrics.responses += 1
                             metrics.total_response_seconds += time.monotonic() - started
                             if resp.status < 400:

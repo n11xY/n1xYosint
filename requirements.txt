@@ -1,4 +1,5 @@
-aiohttp>=3.9
+aiohttp>=3.14.4
+certifi>=2026.10.18   # drops a root CA whose intermediate keys were compromised
 aiohttp-socks>=0.9   # enables socks5:// / socks5h:// proxy support (e.g. Tor on Kali)
 PyYAML>=6.0
 rich>=13.7
@@ -12,5 +13,5 @@ phonenumbers>=8.13   # offline phone number parsing/validation for the phone_loo
 # Optional: enables avatar_correlation.py (cross-references profile photos
 # collected by other modules for a near-identical match across otherwise
 # unlinked accounts). Omit these two lines and it's silently skipped.
-# Pillow>=10.0
+# Pillow>=13.0
 # imagehash>=4.3

@@ -253,3 +253,56 @@ def test_metrics_log_line_carries_counters_only(caplog):
     lines = [r.getMessage() for r in caplog.records if "source metrics" in r.getMessage()]
     assert len(lines) == 1 and "requests=1" in lines[0]
     assert "hunter2" not in lines[0] and "token" not in lines[0] and "secret-path" not in lines[0]
+
+
+async def _stream_forever(request):
+    # chunked, no Content-Length: only the running count can stop it
+    resp = web.StreamResponse(status=200)
+    await resp.prepare(request)
+    chunk = b"x" * 65536
+    for _ in range(64):  # 4 MiB, well past the 1 MiB cap below
+        await resp.write(chunk)
+    return resp
+
+
+async def _declared_big(request):
+    return web.Response(status=200, body=b"y" * (2 * 1024 * 1024))
+
+
+def test_bodies_over_the_cap_are_refused_not_truncated():
+    async def scenario():
+        runner, base, hits = await _serve_routes({"/stream": _stream_forever, "/big": _declared_big, "/ok": _ok})
+        try:
+            async with AsyncHttpClient(retries=2, max_body_bytes=1024 * 1024) as http:
+                streamed = await http.get("test", base + "/stream", allow_cache=False)
+                declared = await http.get("test", base + "/big", allow_cache=False)
+                small = await http.get("test", base + "/ok", allow_cache=False)
+                lowered = await http.get("test", base + "/ok", allow_cache=False, max_bytes=1)
+                # a caller can lower the cap, never raise it past the client's
+                raised = await http.get("test", base + "/big", allow_cache=False, max_bytes=10 * 1024 * 1024)
+        finally:
+            await runner.cleanup()
+        return streamed, declared, small, lowered, raised, hits
+
+    streamed, declared, small, lowered, raised, hits = asyncio.run(scenario())
+    for resp in (streamed, declared, raised):
+        assert not resp.ok and resp.text == "" and resp.content == b""
+        assert "larger than" in resp.error
+    assert hits["/stream"] == 1  # not retried: the same server sends the same body
+    assert small.ok and small.text == "ok"
+    assert not lowered.ok and "larger than 1 bytes" in lowered.error
+
+
+def test_text_is_decoded_with_the_declared_charset():
+    async def latin1(request):
+        return web.Response(body="café".encode("latin-1"), content_type="text/plain", charset="latin-1")
+
+    async def scenario():
+        runner, base, _ = await _serve_routes({"/l": latin1})
+        try:
+            async with AsyncHttpClient(retries=0) as http:
+                return await http.get("test", base + "/l", allow_cache=False)
+        finally:
+            await runner.cleanup()
+
+    assert asyncio.run(scenario()).text == "café"
