@@ -29,7 +29,7 @@ together silently, so you always know how much to trust a hit.
 
 ## Features
 
-- 93-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
+- 127-site curated username enumeration database (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
 - Name search across GitHub, Wikipedia, three academic APIs (ORCID, OpenAlex, Crossref), and a no-API LinkedIn/X manual-search-link generator — every API-backed one automatically retries with an ASCII-folded form (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u) when the exact name returns nothing, so diacritic names (Turkish and beyond) aren't silently missed
@@ -101,7 +101,7 @@ configuration.
 
 | Module | Category | Identifier | Notes |
 |---|---|---|---|
-| `username_sites` | social/various | username | 93-site database (`config/sites.json`); every apparent match is cross-checked against a random nonexistent decoy username on the same site before being reported, downgrading to `uncertain` if the decoy also "matches" (site's signal isn't reliable right now) |
+| `username_sites` | social/various | username | 127-site database (`config/sites.json`); every apparent match is cross-checked against a random nonexistent decoy username on the same site before being reported, downgrading to `uncertain` if the decoy also "matches" (site's signal isn't reliable right now) |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
 | `github_commit_email` | code-hosting | username | free, no key — GitHub's commit search API; finds a real commit-author email even when it's hidden from the profile (optional GitHub PAT raises the search API's tighter 10/min rate limit) |
 | `wayback` | archive | url, username | free, no key — Internet Archive's CDX API; archive history for a discovered URL (e.g. a GitHub profile's linked blog), and for a username's Instagram profile URL, since Instagram can't be checked directly (always `uncertain`; Instagram itself is never contacted) |
@@ -117,7 +117,7 @@ configuration.
 | `mastodon_social` | social | username | free, no key — official API, scoped to the mastodon.social instance specifically (Mastodon is federated, so this can't generalize to every instance) |
 | `scratch` | social | username | free, no key — official Scratch (MIT) API |
 | `github_name_search` | code-hosting | name | free, no key — GitHub's user-search API (`in:name`); finds accounts whose display name matches, always `uncertain` (a name match alone is never proof of identity), discovers each matched username for `--depth` enrichment |
-| `wikipedia` | profile-directory | name | free, no key — official OpenSearch API; flags a matching Wikipedia article for a notable public figure, always `uncertain` for the same reason |
+| `wikipedia` | profile-directory | name, username | free, no key — name: official OpenSearch API; flags a matching Wikipedia article for a notable public figure, always `uncertain` for the same reason. Username: the CentralAuth API finds the one Wikimedia account that covers every wiki (home wiki, registration date, edit count, most-edited wikis) |
 | `orcid` | academic | name | free, no key — official ORCID public API; matches a registered researcher iD, always `uncertain` |
 | `openalex` | academic | name | free, no key — official OpenAlex API; matches an indexed researcher (works/citation counts, institution), discovers a linked ORCID profile URL for `--depth` enrichment, always `uncertain` |
 | `crossref` | academic | name | free, no key — official Crossref API; surfaces matching DOI-bearing publications, always `uncertain` |
@@ -125,6 +125,7 @@ configuration.
 | `discord` | social | username | username-availability check (Discord has no public profile pages) |
 | `twitter_email` | social | email | checks X/Twitter's own signup-flow endpoint for email registration, no key needed |
 | `gravatar` | profile-directory | email | |
+| `pgp_keys` | profile-directory | email | free, no key — keys.openpgp.org publishes a key only after the address owner confirms it (`confirmed`, discovers the name and other verified addresses on the key); keyserver.ubuntu.com accepts any upload, so its keys are one `uncertain` summary and never feed enrichment |
 | `pastebin_search` | paste | both | |
 | `xposedornot` | breach | email | free, no key |
 | `emailrep` | breach | email | free, optional key for higher rate limit |

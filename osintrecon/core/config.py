@@ -22,7 +22,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "retry_backoff": 1.5,
     "rate_limit_per_source": 5,   # max concurrent requests per source module
     "max_enrichment_identifiers": 200,  # safety cap on total identifiers across --depth rounds
-    "user_agent": "n1xYosint/0.1 (+https://github.com/) research use",
+    "user_agent": "n1xYosint/0.1 (+https://github.com/n11xY/n1xYosint) research use",
     "proxy": None,                # e.g. "socks5h://127.0.0.1:9050" for Tor on Kali
     "headers": {},
     "cache": {

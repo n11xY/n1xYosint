@@ -121,3 +121,54 @@ def test_omitted_search_depth_matches_todays_default_normal_limit():
     asyncio.run(plugin.run(identifier))
 
     assert http.calls[0]["limit"] == 3
+
+
+class UsernameHttp:
+    def __init__(self, resp):
+        self.resp = resp
+        self.calls = []
+
+    async def get(self, source, url, params=None):
+        self.calls.append((url, params))
+        return self.resp
+
+
+def test_username_finds_the_global_wikimedia_account():
+    http = UsernameHttp(FakeResp(data={"query": {"globaluserinfo": {
+        "home": "enwiki", "name": "Jane Doe", "registration": "2008-04-12T16:22:49Z", "editcount": 120,
+        "merged": [
+            {"wiki": "enwiki", "url": "https://en.wikipedia.org", "editcount": 100},
+            {"wiki": "commonswiki", "url": "https://commons.wikimedia.org", "editcount": 20},
+            {"wiki": "dewiki", "url": "https://de.wikipedia.org", "editcount": 0},
+        ],
+    }}}))
+    plugin = WikipediaPlugin(config={}, http=http)
+
+    findings = asyncio.run(plugin.run(Identifier(value="Jane_Doe", type=IdentifierType.USERNAME)))
+
+    assert http.calls[0][0] == "https://meta.wikimedia.org/w/api.php"
+    assert http.calls[0][1]["guiuser"] == "Jane_Doe"
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.status == MatchStatus.CONFIRMED
+    assert f.source_url == "https://meta.wikimedia.org/wiki/Special:CentralAuth/Jane_Doe"
+    assert f.metadata["home_wiki"] == "enwiki"
+    assert f.metadata["wikis_attached"] == 3
+    assert f.metadata["wikis_edited"] == 2
+    assert [w["wiki"] for w in f.metadata["top_wikis"]] == ["enwiki", "commonswiki"]
+    assert f.metadata["locked"] is False
+
+
+def test_username_without_an_account_returns_nothing():
+    http = UsernameHttp(FakeResp(data={"batchcomplete": "", "query": {"globaluserinfo": {"missing": ""}}}))
+    plugin = WikipediaPlugin(config={}, http=http)
+
+    assert asyncio.run(plugin.run(Identifier(value="Zq9f8e7d6c", type=IdentifierType.USERNAME))) == []
+
+
+def test_username_lookup_blocked_is_an_error_not_a_miss():
+    plugin = WikipediaPlugin(config={}, http=UsernameHttp(FakeResp(status=403)))
+
+    findings = asyncio.run(plugin.run(Identifier(value="Someone", type=IdentifierType.USERNAME)))
+
+    assert [f.status for f in findings] == [MatchStatus.ERROR]
