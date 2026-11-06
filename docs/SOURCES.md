@@ -329,6 +329,39 @@ New plugin:
   - *Backloggd*: a bot challenge for every request, from home and server.
     Removed.
 
+## Third batch (2026-11-06)
+
+113 sites, each checked end to end through the engine's own client and
+classifier (one or two clearly public accounts found, two random names not
+found) and with curl from the production server (real account 200, random
+name 404 or the entry's not-found signal). Test accounts were platform,
+company or project accounts, or well-known public figures.
+
+- **Software and developer communities** (14): Launchpad, asciinema, Exercism, WakaTime, Puppet Forge, Open VSX, HackMD, Gradle Plugins, freeCodeCamp, Coderwall, Rust Users Forum, Arduino Forum, Julia Discourse, Elixir Forum.
+- **Games, art, music and video** (11): hearthis.at, Tapas, Kongregate, ReverbNation, GOG, Lospec, Shikimori, Fandom, TETR.IO, Pokemon Showdown, Audius.
+- **Regional social networks** (12): Plurk, V2EX, Minds, TabNews, Cnblogs, omg.lol, Boosty, Misskey.io, Virgool, Wykop, Postype, Tipeee.
+- **Sports, travel and hobbies** (13): Lidraughts, Lishogi, PlayStrategy, PyChess, Hevy, Travellerspoint, D&D Beyond, Mixlr, TwitCasting, Geocaching, Brickset, ListenBrainz, Couchsurfing.
+- **Asia, Middle East, Latin America and the fediverse** (15): note, Aparat, Kompasiana, Vocus, lit.link, Cafecito, Blockdit, Catarse, LivePix, CodeChef, Meneame, mstdn.jp, Fosstodon, Lemmy.ml, Framatube.
+- **Education, science, finance and publishing** (12): Tatoeba, Zooniverse, TradingView, Farcaster, Treehouse, Zotero, Rosalind, WIP, Buttondown, Steemit, Contra, Vocal.
+- **Freelance, marketplaces and portfolios** (13): Codementor, Paragraph, Big Cartel, Carbonmade, Kwork, CGTrader, Speaker Deck, ThemeForest, Tellonym, Habr Career, HowLongToBeat, Ghost, Freelancer.
+- **Project forums (Discourse) and wikis (MediaWiki API)** (23): Godot Forum, Blender Developer Forum, Blender Artists, Ubuntu Discourse, NixOS Discourse, Obsidian Forum, Kubernetes Discuss, OpenAI Developer Forum, Discourse Meta, PyTorch Forums, Hugging Face Forums, freeCodeCamp Forum, Unreal Engine Forums, KDE Discuss, Cursor Forum, GNOME Discourse, LLVM Discourse, three.js Forum, Ghost Forum, Gentoo Wiki, NixOS Wiki, Factorio Wiki, Guild Wars 2 Wiki.
+
+Also in this batch:
+- **401/403 never reads as "not found".** A status- or text-checked entry
+  answered with a bot challenge (Cloudflare serves 403) used to read as
+  "no account", silently hiding real accounts on every site behind such a
+  wall. It now reads as access restricted, unless the entry itself declares
+  that status as its not-found status.
+- **Removed: blocked for every request**, from a home connection and from
+  the production server (Cloudflare or similar): ArtStation, BeerAdvocate,
+  CodePen, Discogs, Giant Bomb, GitLab, Letterboxd, LibraryThing, Lichess,
+  Medium, Newgrounds, npm, Product Hunt, Reddit, Rumble, SourceForge,
+  Speedrun.com, Tumblr, Unsplash, VSCO. GitLab, Lichess and Speedrun.com
+  keep their dedicated API plugins.
+- **Removed: TryHackMe**, whose profile URL now serves the same app shell
+  for every name. **Observable** moved to `api.observablehq.com/user/@{}`
+  for the same reason.
+
 ## Second batch (2026-11-05)
 
 Checked like the first batch (end to end locally, real account found and
