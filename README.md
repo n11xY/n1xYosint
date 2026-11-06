@@ -29,7 +29,7 @@ together silently, so you always know how much to trust a hit.
 
 ## Features
 
-- 157-site curated username enumeration database (10 of them adult sites, checked only with `--include-adult`) (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
+- 154-site curated username enumeration database (10 of them adult sites, checked only with `--include-adult`) (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
 - Name search across GitHub, Wikipedia, three academic APIs (ORCID, OpenAlex, Crossref), and a no-API LinkedIn/X manual-search-link generator — every API-backed one automatically retries with an ASCII-folded form (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u) when the exact name returns nothing, so diacritic names (Turkish and beyond) aren't silently missed
@@ -114,7 +114,7 @@ configuration.
 
 | Module | Category | Identifier | Notes |
 |---|---|---|---|
-| `username_sites` | social/various | username | 157-site database (the 10 adult sites only with `--include-adult` or `sources.username_sites.include_adult: true`) (`config/sites.json`); every apparent match is cross-checked against a random nonexistent decoy username on the same site before being reported, downgrading to `uncertain` if the decoy also "matches" (site's signal isn't reliable right now) |
+| `username_sites` | social/various | username | 154-site database (the 10 adult sites only with `--include-adult` or `sources.username_sites.include_adult: true`) (`config/sites.json`); every apparent match is cross-checked against a random nonexistent decoy username on the same site before being reported, downgrading to `uncertain` if the decoy also "matches" (site's signal isn't reliable right now) |
 | `github` / `gitlab` | code-hosting | username | official public APIs |
 | `github_commit_email` | code-hosting | username | free, no key — GitHub's commit search API; finds a real commit-author email even when it's hidden from the profile (optional GitHub PAT raises the search API's tighter 10/min rate limit) |
 | `wayback` | archive | url, username | free, no key — Internet Archive's CDX API; archive history for a discovered URL (e.g. a GitHub profile's linked blog), and for a username's Instagram profile URL, since Instagram can't be checked directly (always `uncertain`; Instagram itself is never contacted) |

@@ -283,3 +283,26 @@ def test_include_adult_flag_reaches_username_sites_config():
 
     args = build_parser().parse_args(["-u", "alice", "--include-adult"])
     assert args.include_adult is True
+
+
+def test_redirect_to_a_not_found_url_is_not_found_even_on_a_challenge_page():
+    from osintrecon.plugins.sources.username_sites import LookupOutcome, _classify
+    site = {"name": "Bandcamp", "url": "https://{}.bandcamp.com", "check": "message",
+            "found_text": "\"url\":\"https://{}.bandcamp.com", "not_found_url": "bandcamp.com/signup?new_domain="}
+    free = SimpleNamespace(status=200, text="<title>Client Challenge</title>", error=None,
+                           url="https://bandcamp.com/signup?new_domain=nobody1")
+    real = SimpleNamespace(status=200, text='{"url":"https://subpop.bandcamp.com"}', error=None,
+                           url="https://subpop.bandcamp.com/")
+    challenged = SimpleNamespace(status=200, text="<title>Client Challenge</title>", error=None,
+                                 url="https://subpop.bandcamp.com/")
+    assert _classify(free, site, "nobody1") is LookupOutcome.NOT_FOUND
+    assert _classify(real, site, "subpop") is LookupOutcome.PROFILE_FOUND
+    assert _classify(challenged, site, "subpop") is LookupOutcome.UNKNOWN
+
+
+def test_site_headers_are_added_to_the_request():
+    from osintrecon.plugins.sources.username_sites import _BROWSER_HEADERS, _headers_for
+    youtube = {"name": "YouTube", "headers": {"Cookie": "SOCS=CAI"}}
+    assert _headers_for(youtube) == {**_BROWSER_HEADERS, "Cookie": "SOCS=CAI"}
+    assert _headers_for({"name": "Plain", "browser_headers": False, "headers": {"X-A": "1"}}) == {"X-A": "1"}
+    assert _headers_for({"name": "Plain", "browser_headers": False}) is None
