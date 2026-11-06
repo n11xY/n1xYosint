@@ -81,7 +81,8 @@ site declines to answer (`rate_limited`, `auth_required`,
 uses it, see docs/INSTAGRAM.md). A third-party viewer of a platform names it in
 `"mirror_of"` (its findings are labelled third-party and unverified), and a
 site that can only ever confirm an account sets `"found_only": true` (no
-finding unless a profile was found). When `"url"` is a JSON API rather than the profile page, add
+finding unless a profile was found; `"confirmed": true` shows a found profile as
+CONFIRMED). When `"url"` is a JSON API rather than the profile page, add
 `"profile_url"` (same `{}` placeholder): it's the link a finding shows,
 while `"url"` stays the one that's checked.
 `"browser_headers": false` sends the client's own honest User-Agent instead
