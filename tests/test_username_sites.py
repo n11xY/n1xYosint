@@ -306,3 +306,15 @@ def test_site_headers_are_added_to_the_request():
     assert _headers_for(youtube) == {**_BROWSER_HEADERS, "Cookie": "SOCS=CAI"}
     assert _headers_for({"name": "Plain", "browser_headers": False, "headers": {"X-A": "1"}}) == {"X-A": "1"}
     assert _headers_for({"name": "Plain", "browser_headers": False}) is None
+
+
+def test_a_403_challenge_is_never_read_as_not_found():
+    from osintrecon.plugins.sources.username_sites import LookupOutcome, _classify
+    status_site = {"name": "Example", "url": "https://example.com/{}", "check": "status",
+                   "found_status": 200, "not_found_status": 404}
+    challenge = SimpleNamespace(status=403, text="<title>Just a moment...</title>", error=None, url="")
+    assert _classify(challenge, status_site, "someone") is LookupOutcome.ACCESS_RESTRICTED
+    assert _classify(challenge, CONTENT_SITE, "someone") is LookupOutcome.ACCESS_RESTRICTED
+    # unless the site itself answers a free name with that status
+    forbids_missing = dict(status_site, not_found_status=403)
+    assert _classify(challenge, forbids_missing, "someone") is LookupOutcome.NOT_FOUND

@@ -327,6 +327,11 @@ def _classify(resp, site: dict, username: str) -> LookupOutcome:
         # every username: absence of the profile marker alone is not
         # evidence the account doesn't exist.
         return LookupOutcome.UNKNOWN
+    if resp.status in (401, 403) and resp.status != site.get("not_found_status"):
+        # A bot challenge or a block (Cloudflare answers 403) says nothing
+        # about the account; read as "not found" it hid real accounts on
+        # every status-only entry behind such a wall.
+        return LookupOutcome.ACCESS_RESTRICTED
     return LookupOutcome.PROFILE_FOUND if _is_found(resp, site, username) else LookupOutcome.NOT_FOUND
 
 
