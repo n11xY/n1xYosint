@@ -121,3 +121,21 @@ def test_an_avatar_declaring_a_huge_canvas_is_not_decoded():
     finally:
         imagehash.average_hash = real
     assert decoded == [(32, 32)]
+
+
+def test_same_picture_on_the_same_platform_is_a_default_not_a_match():
+    img = _split_image()
+    a = Identifier("alice", IdentifierType.USERNAME)
+    b = Identifier("bob", IdentifierType.USERNAME)
+    hashes = {(a, "https://x/1.png"): imagehash.average_hash(img), (b, "https://x/2.png"): imagehash.average_hash(img)}
+
+    assert _matches_from_hashes(hashes, {(a, "https://x/1.png"): "scratch", (b, "https://x/2.png"): "scratch"}) == []
+    assert len(_matches_from_hashes(hashes, {(a, "https://x/1.png"): "github", (b, "https://x/2.png"): "gravatar"})) == 1
+
+
+def test_placeholder_avatar_urls_are_skipped():
+    from osintrecon.core.avatar_correlation import _PLACEHOLDER
+
+    assert _PLACEHOLDER.search("https://mastodon.social/avatars/original/missing.png")
+    assert _PLACEHOLDER.search("https://example.org/img/default_avatar.jpg")
+    assert not _PLACEHOLDER.search("https://avatars.githubusercontent.com/u/1024025?v=4")
