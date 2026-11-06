@@ -78,7 +78,10 @@ three. `"restrictions"` maps pieces of a response to what they mean when a
 site declines to answer (`rate_limited`, `auth_required`,
 `challenge_required` or `error_page`); such a response pauses the site like a
 429 and is reported as that restriction, never as a result (Instagram's entry
-uses it, see docs/INSTAGRAM.md). When `"url"` is a JSON API rather than the profile page, add
+uses it, see docs/INSTAGRAM.md). A third-party viewer of a platform names it in
+`"mirror_of"` (its findings are labelled third-party and unverified), and a
+site that can only ever confirm an account sets `"found_only": true` (no
+finding unless a profile was found). When `"url"` is a JSON API rather than the profile page, add
 `"profile_url"` (same `{}` placeholder): it's the link a finding shows,
 while `"url"` stays the one that's checked.
 `"browser_headers": false` sends the client's own honest User-Agent instead
