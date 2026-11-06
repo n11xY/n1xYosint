@@ -1,7 +1,9 @@
-<h1 align="center">n1xYosint</h1>
-
 <p align="center">
-  Async, plugin-based OSINT reconnaissance for usernames, email addresses, phone numbers, and full names.
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/header-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/brand/header-light.svg">
+    <img src="docs/brand/header-dark.svg" alt="n1xYosint: OSINT reconnaissance for usernames, emails, phone numbers, names and domains" width="820">
+  </picture>
 </p>
 
 <p align="center">
@@ -17,6 +19,20 @@ across dozens of platforms and APIs concurrently, correlates whatever it
 finds back into linked identities, scores each result by how confident it
 actually is, and hands you a report — terminal, JSON, CSV, TXT, HTML, or
 a typed identity graph.
+
+<p align="center">
+  <img src="docs/terminal.svg" alt="n1xyosint -u torvalds: the banner, the live progress bar, found accounts with their confidence, sources that couldn't answer, and the run summary" width="900">
+</p>
+
+### Quick start
+
+```bash
+git clone https://github.com/n11xY/n1xYosint.git && cd n1xYosint
+python3 -m venv .venv && source .venv/bin/activate && pip install -e .
+n1xyosint -u johndoe
+```
+
+More in [Install](#install) and [Usage](#usage).
 
 Every result is either **confirmed** (an official API said so) or
 **probable** (a page-content heuristic said so) — the two are never mixed
@@ -95,6 +111,11 @@ n1xyosint -d example.com
 # each one about a random, unregistered name; a site that says "found" is
 # broken for every search. Writes a JSON report.
 python -m osintrecon.core.site_health --out site_health.json
+
+# on a terminal it opens with the banner and a live progress bar; piped or
+# redirected output gets the results only (--no-banner / --no-progress to
+# turn them off by hand)
+n1xyosint -u johndoe --no-banner
 
 # check setup before running a real scan: config, filesystem paths, and
 # DNS reachability for every enabled source's domain(s)
