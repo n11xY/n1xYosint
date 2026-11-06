@@ -91,6 +91,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
                     # rate-limited site in the database.
                     "decoy_verification_enabled": False,
                 },
+                # velog.io has answered every request since 2026-11-06 with a
+                # response that never finishes (profile, RSS and about pages
+                # alike, from home and from the server). Off until it does;
+                # set enabled: true in config.yaml to check it again.
+                "Velog": {"enabled": False},
             },
         },
     },
