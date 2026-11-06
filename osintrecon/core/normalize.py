@@ -39,6 +39,12 @@ PHONE_CANDIDATE_RE = re.compile(r"^\+[\d\s\-.()]{7,20}$")
 # tried by hand.
 _NAME_WORD = r"[^\W\d_](?:[^\W\d_]|['\-])*"
 NAME_RE = re.compile(rf"^{_NAME_WORD}(\s+{_NAME_WORD})+$")
+# A registrable domain in ASCII (IDNs are converted first): dot-separated
+# labels of letters, digits and inner hyphens, ending in an alphabetic TLD.
+# "john.doe" is also a valid username, so a domain is never guessed from
+# shape: it only comes from input marked as a domain (--domain, the web
+# form's domain box) via build_domain().
+DOMAIN_RE = re.compile(r"^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$")
 
 
 @dataclass
@@ -67,6 +73,47 @@ def normalize_name(raw: str) -> str:
     # Collapse internal whitespace only -- casing is left alone ("McDonald",
     # "O'Brien" are valid as typed; force-titlecasing would break them).
     return " ".join(raw.split())
+
+
+def normalize_domain(raw: str) -> str:
+    """"https://www.Example.com/path?q" -> "example.com": scheme, path,
+    query, port, a leading "www." and a trailing dot dropped, lowercased,
+    an internationalised name converted to its ASCII (punycode) form."""
+    value = raw.strip().lower()
+    value = re.sub(r"^[a-z][a-z0-9+.-]*://", "", value)
+    value = re.split(r"[/?#]", value, maxsplit=1)[0]
+    value = value.rsplit("@", 1)[-1].split(":", 1)[0].rstrip(".")
+    if value.startswith("www."):
+        value = value[4:]
+    try:
+        value = value.encode("idna").decode("ascii")
+    except UnicodeError:
+        pass
+    return value
+
+
+def build_domain(raw: str) -> tuple[Identifier | None, str | None]:
+    """A DOMAIN identifier from input the user marked as a domain."""
+    if not raw.strip():
+        return None, "empty input"
+    norm = normalize_domain(raw)
+    if not DOMAIN_RE.match(norm):
+        return None, f"invalid domain: {raw!r}"
+    return Identifier(value=norm, type=IdentifierType.DOMAIN, raw=raw), None
+
+
+def normalize_domains(raw_values: list[str]) -> NormalizationResult:
+    identifiers: list[Identifier] = []
+    rejected: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for raw in raw_values:
+        ident, reason = build_domain(raw)
+        if ident is None:
+            rejected.append((raw, reason or "unknown error"))
+        elif ident.value not in seen:
+            seen.add(ident.value)
+            identifiers.append(ident)
+    return NormalizationResult(identifiers=identifiers, rejected=rejected)
 
 
 def classify(raw: str) -> IdentifierType | None:
@@ -162,6 +209,8 @@ def is_valid_discovered_identifier(identifier: Identifier) -> bool:
             return False
     if identifier.type == IdentifierType.URL:
         return value.startswith(("http://", "https://"))
+    if identifier.type == IdentifierType.DOMAIN:
+        return bool(DOMAIN_RE.match(value))
     return True  # IdentifierType.OTHER -- no shape to enforce, and nothing consumes it
 
 
