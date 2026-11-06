@@ -358,6 +358,10 @@ Also in this batch:
   Medium, Newgrounds, npm, Product Hunt, Reddit, Rumble, SourceForge,
   Speedrun.com, Tumblr, Unsplash, VSCO. GitLab, Lichess and Speedrun.com
   keep their dedicated API plugins.
+- **Turned off: Velog** (`site_settings.Velog.enabled: false`). Since 2026-11-06 every
+  request to velog.io gets a response that never finishes, for profile, RSS and
+  about pages alike, from home and from the server. Set it back to true once it
+  answers again.
 - **Removed: TryHackMe**, whose profile URL now serves the same app shell
   for every name. **Observable** moved to `api.observablehq.com/user/@{}`
   for the same reason.
