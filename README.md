@@ -10,7 +10,7 @@
   <a href="https://github.com/n11xY/n1xYosint/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/n11xY/n1xYosint/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="License" src="https://img.shields.io/github/license/n11xY/n1xYosint">
   <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-blue">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-Kali%20Linux-557C94">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-557C94">
   <a href="https://github.com/n11xY/n1xYosint/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/n11xY/n1xYosint?style=social"></a>
 </p>
 
