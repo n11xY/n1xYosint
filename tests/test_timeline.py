@@ -96,3 +96,32 @@ def test_a_site_check_and_a_plugin_for_the_same_platform_are_the_same_account():
         finding("devto", linked_accounts=[{"platform": "github", "username": "alice", "evidence": "profile_link"}]),
     ])
     assert links[("github", "alice")] == ("profile_link",)
+
+
+def test_evidence_links_lists_each_pair_once_with_its_kind():
+    from osintrecon.core.timeline import evidence_links
+
+    pairs = evidence_links([
+        finding("github"),
+        finding("keybase", linked_accounts=[{"platform": "github", "username": "alice", "evidence": "keybase_proof"},
+                                            {"platform": "github", "username": "alice", "evidence": "keybase_proof"}]),
+        finding("devto", linked_accounts=[{"platform": "github", "username": "alice", "evidence": "profile_link"},
+                                          {"platform": "twitter", "username": "alice", "evidence": "profile_link"}]),
+    ])
+    assert sorted(pairs) == [
+        (("devto", "alice"), ("github", "alice"), "profile_link"),
+        (("github", "alice"), ("keybase", "alice"), "keybase_proof"),
+    ]
+
+
+def test_a_photo_match_within_one_platform_is_not_evidence():
+    from osintrecon.core.timeline import evidence_links
+
+    bob = Identifier(value="bob", type=IdentifierType.USERNAME)
+    pairs = evidence_links([
+        finding("scratch", avatar_url="https://s/1.png"),
+        finding("scratch", identifier=bob, avatar_url="https://s/2.png"),
+        finding("avatar_correlation", status=MatchStatus.PROBABLE,
+                avatar_url_a="https://s/1.png", avatar_url_b="https://s/2.png"),
+    ])
+    assert pairs == []

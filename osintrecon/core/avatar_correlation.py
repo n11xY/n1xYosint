@@ -22,6 +22,7 @@ at, not an automatic identity merge they can't inspect or undo.
 from __future__ import annotations
 
 import importlib.util
+import re
 from io import BytesIO
 from typing import TYPE_CHECKING
 
@@ -50,6 +51,12 @@ def available() -> bool:
 AVATAR_MAX_BYTES = 2 * 1024 * 1024
 AVATAR_MAX_PIXELS = 4096 * 4096
 
+# Platform placeholder images ("missing.png", "default_avatar.png", ...):
+# everyone without a photo shares them, so they say nothing about who an
+# account belongs to.
+_PLACEHOLDER = re.compile(r"(missing|default|placeholder|blank|anonymous|no[-_]?avatar)[^/]*\.(png|jpe?g|gif|svg|webp)",
+                          re.IGNORECASE)
+
 
 async def find_avatar_matches(findings: list[Finding], http: AsyncHttpClient) -> list[Finding]:
     if not available():
@@ -63,16 +70,18 @@ async def find_avatar_matches(findings: list[Finding], http: AsyncHttpClient) ->
     # (e.g. re-run across enrichment rounds); dedup on the pair, not just
     # the URL, so each identifier still gets its own hash entry to compare.
     candidates: list[tuple[Identifier, str]] = []
+    sources: dict[tuple[Identifier, str], str] = {}
     seen: set[tuple[Identifier, str]] = set()
     for f in findings:
         url = (f.metadata or {}).get("avatar_url")
-        if not url:
+        if not url or _PLACEHOLDER.search(url):
             continue
         key = (f.identifier, url)
         if key in seen:
             continue
         seen.add(key)
         candidates.append(key)
+        sources[key] = f.source
 
     if len(candidates) < 2:
         return []
@@ -96,13 +105,20 @@ async def find_avatar_matches(findings: list[Finding], http: AsyncHttpClient) ->
             log.debug("avatar hash failed for %s: %s", url, exc)
             continue
 
-    return _matches_from_hashes(hashes)
+    return _matches_from_hashes(hashes, sources)
 
 
-def _matches_from_hashes(hashes: "dict[tuple[Identifier, str], imagehash.ImageHash]") -> list[Finding]:
+def _matches_from_hashes(hashes: "dict[tuple[Identifier, str], imagehash.ImageHash]",
+                         sources: "dict[tuple[Identifier, str], str] | None" = None) -> list[Finding]:
     """Pure pairwise-comparison step, split out from find_avatar_matches so
     it's testable without a network fetch -- feed it real ImageHash objects
-    (computed from in-memory images) and it needs no HTTP client at all."""
+    (computed from in-memory images) and it needs no HTTP client at all.
+
+    Two different accounts on the *same* platform with the same picture
+    are almost always both showing that platform's default avatar (seen
+    live: Scratch serves its default under a per-user URL), so a match is
+    only counted across different platforms."""
+    sources = sources or {}
     matches: list[Finding] = []
     items = list(hashes.items())
     for i in range(len(items)):
@@ -110,6 +126,9 @@ def _matches_from_hashes(hashes: "dict[tuple[Identifier, str], imagehash.ImageHa
         for j in range(i + 1, len(items)):
             (ident_b, url_b), hash_b = items[j]
             if ident_a == ident_b:
+                continue
+            source_a, source_b = sources.get((ident_a, url_a)), sources.get((ident_b, url_b))
+            if source_a is not None and source_a == source_b:
                 continue
             # imagehash's ImageHash.__sub__ returns a numpy integer (e.g.
             # numpy.int64), not a plain int -- json.dumps() (export_json,

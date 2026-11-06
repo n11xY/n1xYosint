@@ -93,19 +93,23 @@ class DatedAccount:
         return bool(self.evidence)
 
 
-def account_links(findings: Iterable[Finding]) -> dict[tuple[str, str], tuple[str, ...]]:
-    """(platform key, lowercased identifier) -> the kinds of evidence tying
-    that found account to at least one other found account."""
+def evidence_links(findings: Iterable[Finding]) -> list[tuple[tuple[str, str], tuple[str, str], str]]:
+    """Every piece of evidence tying two found accounts together, as
+    (account, account, kind) with accounts keyed (platform key, lowercased
+    identifier); each pair and kind once. Only accounts the search found
+    (confirmed or probable) take part: a profile linking to an account the
+    search didn't find links nothing."""
+    findings = list(findings)
     found: dict[tuple[str, str], list[Finding]] = {}
     for f in findings:
         if f.status in COUNTED and f.source != "avatar_correlation":
             found.setdefault((platform_key(f.source), f.identifier.value.lower()), []).append(f)
-    evidence: dict[tuple[str, str], set[str]] = {}
+    pairs: dict[tuple, None] = {}
 
     def link(a, b, kind):
         if a != b and a in found and b in found:
-            evidence.setdefault(a, set()).add(kind)
-            evidence.setdefault(b, set()).add(kind)
+            first, second = sorted((a, b))
+            pairs[(first, second, kind)] = None
 
     by_avatar: dict[str, tuple[str, str]] = {}
     for node, items in found.items():
@@ -121,8 +125,20 @@ def account_links(findings: Iterable[Finding]) -> dict[tuple[str, str], tuple[st
         if f.source == "avatar_correlation":
             meta = f.metadata or {}
             a, b = by_avatar.get(meta.get("avatar_url_a")), by_avatar.get(meta.get("avatar_url_b"))
-            if a and b:
+            # Same platform on both sides is a shared default picture, not
+            # one person (results saved before avatar_correlation knew).
+            if a and b and a[0] != b[0]:
                 link(a, b, "avatar_match")
+    return list(pairs)
+
+
+def account_links(findings: Iterable[Finding]) -> dict[tuple[str, str], tuple[str, ...]]:
+    """(platform key, lowercased identifier) -> the kinds of evidence tying
+    that found account to at least one other found account."""
+    evidence: dict[tuple[str, str], set[str]] = {}
+    for a, b, kind in evidence_links(findings):
+        evidence.setdefault(a, set()).add(kind)
+        evidence.setdefault(b, set()).add(kind)
     return {node: tuple(k for k in EVIDENCE_KINDS if k in kinds) for node, kinds in evidence.items()}
 
 
