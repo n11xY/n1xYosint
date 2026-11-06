@@ -554,3 +554,205 @@ def test_engine_applies_the_instagram_defaults_and_reports_its_metrics(tmp_path)
     assert metrics["rate_limited"] == 1
     assert metrics["cooldown_skips"] == 1
     assert metrics["cooling_down"] is True
+
+
+# -- restrictions observed live (2026-11-06) and uniform source status --------
+
+def production_restrictions():
+    """The Instagram entry's restriction markers, as shipped in sites.json."""
+    import json
+    from pathlib import Path
+    sites = json.loads(Path(username_sites.DEFAULT_SITES_PATH).read_text(encoding="utf-8"))
+    return next(s for s in sites if s["name"] == "Instagram")["restrictions"]
+
+
+def restricted_scan(tmp_path, handler, names=("someone",), runs=1, **setting_overrides):
+    async def go():
+        async with Server(handler) as server:
+            out = []
+            for _ in range(runs):
+                results, metrics = await scan(server, tmp_path / "c.db", list(names),
+                                              site_overrides={"restrictions": production_restrictions()},
+                                              **setting_overrides)
+                out.append((results, metrics))
+            return out, server.instagram_hits()
+    return asyncio.run(go())
+
+
+def test_the_error_shell_is_a_restriction_that_pauses_instagram(tmp_path):
+    # What a home connection got for a real account and a random name alike.
+    runs, hits = restricted_scan(tmp_path, lambda r: web.Response(text=ERROR_SHELL), runs=2)
+    first = only(runs[0][0][0])
+    assert first.status == MatchStatus.ERROR
+    assert first.metadata["outcome"] == "access_restricted"
+    assert first.metadata["blocked"] == "error_page"
+    assert first.metadata["source_status"] == "TEMPORARILY_UNAVAILABLE"
+    assert first.metadata["retry_eligible"] is True and first.metadata["cooldown_until"]
+    assert "error page" in first.title
+    second = only(runs[1][0][0])
+    assert second.metadata["request_sent"] is False      # the pause held
+    assert second.metadata["http_status"] is None        # nothing sent, no status invented
+    assert second.metadata["suppressed_by_cooldown"] is True
+    assert second.metadata["source_status"] == "TEMPORARILY_UNAVAILABLE"
+    assert "error page" in second.title
+    assert hits == 1 and runs[1][1]["cooldown_skips"] == 1
+
+
+def test_require_login_json_is_auth_required_never_not_found(tmp_path):
+    body = '{"message":"","require_login":true,"status":"fail"}'
+    runs, _ = restricted_scan(tmp_path, lambda r: web.Response(status=401, text=body,
+                                                                content_type="application/json"))
+    finding = only(runs[0][0][0])
+    assert finding.metadata["source_status"] == "AUTH_REQUIRED"
+    assert finding.metadata["blocked"] == "auth_required"
+    assert "sign-in" in finding.title
+
+
+def test_challenge_and_checkpoint_are_challenge_required(tmp_path):
+    for body in ('{"message":"challenge_required","status":"fail"}',
+                 '{"message":"checkpoint_required","checkpoint_url":"/challenge/","status":"fail"}'):
+        runs, _ = restricted_scan(tmp_path, lambda r, b=body: web.Response(status=400, text=b))
+        finding = only(runs[0][0][0])
+        assert finding.metadata["source_status"] == "CHALLENGE_REQUIRED"
+        assert finding.metadata["outcome"] == "access_restricted"
+        tmp_path = tmp_path / "next"
+        tmp_path.mkdir()
+
+
+def test_please_wait_is_rate_limited_and_the_pause_persists_across_runs(tmp_path):
+    body = '{"message":"Please wait a few minutes before you try again.","require_login":true,"status":"fail"}'
+    runs, hits = restricted_scan(tmp_path, lambda r: web.Response(status=401, text=body), runs=2)
+    first = only(runs[0][0][0])
+    assert first.metadata["outcome"] == "rate_limited"
+    assert first.metadata["source_status"] == "RATE_LIMITED"
+    assert first.metadata["cooldown_until"]
+    assert "asked to wait" in first.title
+    second = only(runs[1][0][0])
+    assert second.metadata["request_sent"] is False
+    assert hits == 1
+
+
+def test_feedback_required_is_rate_limited(tmp_path):
+    runs, _ = restricted_scan(tmp_path, lambda r: web.Response(status=400, text='{"message":"feedback_required"}'))
+    assert only(runs[0][0][0]).metadata["source_status"] == "RATE_LIMITED"
+
+
+def test_a_plain_403_is_unavailable_never_not_found(tmp_path):
+    runs, _ = restricted_scan(tmp_path, lambda r: web.Response(status=403, text="Forbidden"))
+    finding = only(runs[0][0][0])
+    assert finding.metadata["outcome"] == "access_restricted"
+    assert finding.metadata["source_status"] == "TEMPORARILY_UNAVAILABLE"
+
+
+def test_empty_and_malformed_answers_are_unavailable_never_not_found(tmp_path):
+    for body in ("", '{"data": {"user": ', "null"):
+        runs, _ = restricted_scan(tmp_path, lambda r, b=body: web.Response(status=200, text=b))
+        finding = only(runs[0][0][0])
+        assert finding.status == MatchStatus.ERROR
+        assert finding.metadata["outcome"] == "unknown"
+        assert finding.metadata["source_status"] == "TEMPORARILY_UNAVAILABLE"
+        tmp_path = tmp_path / "next"
+        tmp_path.mkdir()
+
+
+def test_a_timeout_is_a_network_error_and_retry_eligible(tmp_path):
+    async def slow(request):
+        await asyncio.sleep(2)
+        return web.Response(text=profile_page("someone"))
+
+    runs, _ = restricted_scan(tmp_path, slow, request_timeout=0.3)
+    finding = only(runs[0][0][0])
+    assert finding.metadata["outcome"] == "network_error"
+    assert finding.metadata["source_status"] == "TEMPORARILY_UNAVAILABLE"
+    assert finding.metadata["retry_eligible"] is True
+
+
+def test_instagram_is_asked_again_once_the_pause_is_over(tmp_path):
+    answers = iter([web.Response(text=ERROR_SHELL)])
+
+    def handler(request):
+        return next(answers, None) or web.Response(text=profile_page(request.match_info["user"]))
+
+    async def go():
+        async with Server(handler) as server:
+            common = {"site_overrides": {"restrictions": production_restrictions()},
+                      "cooldown_duration": 0.3, "max_cooldown_duration": 0.3}
+            first, _ = await scan(server, tmp_path / "c.db", ["someone"], **common)
+            await asyncio.sleep(0.5)
+            second, _ = await scan(server, tmp_path / "c.db", ["someone"], **common)
+            return first, second, server.instagram_hits()
+
+    first, second, hits = asyncio.run(go())
+    assert only(first[0]).metadata["source_status"] == "TEMPORARILY_UNAVAILABLE"
+    recovered = only(second[0])
+    assert recovered.metadata["source_status"] == "SUCCESS" and recovered.metadata["data_origin"] == "direct"
+    assert hits == 2
+
+
+def test_found_profile_carries_success_status_and_its_origin(tmp_path):
+    async def go():
+        async with Server(lambda r: web.Response(text=profile_page(r.match_info["user"]))) as server:
+            first, _ = await scan(server, tmp_path / "c.db", ["someone"])
+            # A second user searching the same name later: answered from the
+            # shared result cache, nothing sent.
+            second, metrics = await scan(server, tmp_path / "c.db", ["someone"])
+            return first, second, server.instagram_hits(), metrics
+
+    first, second, hits, metrics = asyncio.run(go())
+    fresh, cached = only(first[0]), only(second[0])
+    assert fresh.metadata["source_status"] == "SUCCESS"
+    assert fresh.metadata["data_origin"] == "direct" and fresh.metadata["verification"] == "verified"
+    assert fresh.metadata["retry_eligible"] is False
+    assert cached.metadata["data_origin"] == "cache" and cached.metadata["cached"] is True
+    assert hits == 1 and metrics["cache_hits"] == 1
+
+
+def test_a_stale_profile_is_partial_and_unverified(tmp_path):
+    db = tmp_path / "c.db"
+    cache = ResponseCache(str(db))
+    payload = {"outcome": "profile_found", "status": "probable", "http_status": 200, "decoy_check": "disabled"}
+    cache.put_result(IG, "recent", payload, ttl_seconds=86400, collected_at=time.time() - 2 * 86400)
+    cache.close()
+
+    async def go():
+        async with Server(lambda r: web.Response(text=ERROR_SHELL)) as server:
+            results, _ = await scan(server, db, ["recent"],
+                                    site_overrides={"restrictions": production_restrictions()})
+            return results
+
+    stale = only(asyncio.run(go())[0])
+    assert stale.metadata["source_status"] == "PARTIAL"
+    assert stale.metadata["data_origin"] == "stale_cache"
+    assert stale.metadata["verification"] == "unverified"
+    assert stale.metadata["unavailable_reason"] == "access_restricted"
+
+
+def test_cancelling_a_search_mid_request_leaves_nothing_behind(tmp_path):
+    async def go():
+        gate = asyncio.Event()
+
+        async def hang(request):
+            gate.set()
+            await asyncio.sleep(5)
+            return web.Response(text=profile_page("someone"))
+
+        async with Server(hang) as server:
+            cache = ResponseCache(str(tmp_path / "c.db"))
+            try:
+                async with AsyncHttpClient(retries=0, cache=cache) as http:
+                    plugin = UsernameSitesPlugin({"site_settings": {"Instagram": settings()}}, http)
+                    plugin.sites = [instagram_site(server.base)]
+                    task = asyncio.ensure_future(plugin.run(Identifier(value="someone", type=IdentifierType.USERNAME)))
+                    await asyncio.wait_for(gate.wait(), 3)
+                    task.cancel()
+                    with pytest.raises(asyncio.CancelledError):
+                        await task
+                    left_inflight = dict(plugin._inflight)
+                stored = cache.get_result(IG, "someone")
+            finally:
+                cache.close()
+            return left_inflight, stored
+
+    left_inflight, stored = asyncio.run(go())
+    assert left_inflight == {}     # a later search starts a fresh lookup
+    assert stored is None          # nothing half-finished was cached
