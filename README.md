@@ -97,6 +97,10 @@ Copy [`config/config.example.yaml`](config/config.example.yaml) to
 via `OSINTRECON_<SOURCE>_API_KEY` env vars). Everything else works with zero
 configuration.
 
+### Using the engine from code
+
+`Engine(config, progress=callback)` calls `callback` with a plain dict as the scan runs: the checks each enrichment round will make, each check's outcome as it finishes (one per dedicated source, one per site in `config/sites.json`), and a final `correlating` phase. Every planned check gets exactly one outcome, even if its plugin crashes. See `osintrecon/core/progress.py`. `osintrecon.core.timeline.account_dates(findings)` returns the found accounts that carry a creation date from the platform's own API, oldest first, from confirmed and probable findings only.
+
 ## Source modules
 
 | Module | Category | Identifier | Notes |

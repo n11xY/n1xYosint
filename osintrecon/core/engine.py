@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
+from typing import Optional
 
 from osintrecon.core.avatar_correlation import find_avatar_matches
 from osintrecon.core.cache import ResponseCache
@@ -22,6 +23,7 @@ from osintrecon.core.http_client import AsyncHttpClient
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Entity, Finding, Identifier, IdentifierType, RunStats
 from osintrecon.core.normalize import is_valid_discovered_identifier
+from osintrecon.core.progress import ProgressCallback, outcome_of, safe_emit
 from osintrecon.core.scoring import process as dedup_and_score
 from osintrecon.plugins.base import SourcePlugin
 from osintrecon.plugins.registry import PluginRegistry
@@ -44,9 +46,14 @@ class RunResult:
 
 
 class Engine:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, progress: Optional[ProgressCallback] = None):
+        """`progress`, if given, is called with each progress event as the
+        scan runs (see core/progress.py)."""
         self.config = config
         self.stats = RunStats()
+        self.progress = progress
+        self._hop = 0
+        self._reported: set[tuple[str, str]] = set()
 
     async def run(self, identifiers: list[Identifier], depth: int = 1, search_depth: str = "normal") -> RunResult:
         """Run the full pipeline. `depth` is how many enrichment rounds to do:
@@ -92,6 +99,8 @@ class Engine:
             for plugin in plugins:
                 if IdentifierType.NAME in plugin.accepts:
                     plugin.config["search_depth"] = search_depth
+                if self.progress is not None:
+                    plugin.report_check = self._report_check
 
             overall_concurrency = asyncio.Semaphore(self.config.get("concurrency", 20))
             max_enrichment = self.config.get("max_enrichment_identifiers", DEFAULT_MAX_ENRICHMENT_IDENTIFIERS)
@@ -103,6 +112,7 @@ class Engine:
 
             while current_round and hop < max(1, depth):
                 visited.update(current_round)
+                self._hop = hop
 
                 round_findings = await self._run_round(current_round, plugins, overall_concurrency)
                 for f in round_findings:
@@ -116,6 +126,7 @@ class Engine:
                 current_round = next_round if hop < max(1, depth) else []
 
             self.stats.enrichment_hops_completed = hop
+            safe_emit(self.progress, {"event": "phase", "phase": "correlating"}, log)
 
             # Cross-references collected avatar URLs (github/gravatar so far)
             # for near-identical profile photos across otherwise-unlinked
@@ -164,21 +175,59 @@ class Engine:
 
         return next_round
 
+    def _emit_check(self, source: str, identifier: Identifier, outcome: str) -> None:
+        key = (identifier.value, source)
+        if key in self._reported:
+            return
+        self._reported.add(key)
+        safe_emit(self.progress, {"event": "check", "hop": self._hop, "identifier": identifier.value,
+                                  "source": source, "outcome": outcome}, log)
+
+    def _report_check(self, source: str, identifier: Identifier, findings: list[Finding]) -> None:
+        self._emit_check(source, identifier, outcome_of(findings))
+
+    def _planned(self, plugin: SourcePlugin, identifier: Identifier) -> list[str]:
+        try:
+            return plugin.planned_checks(identifier)
+        except Exception as exc:  # noqa: BLE001 -- fall back to one check for the plugin
+            log.debug("planned_checks failed for %s: %s", plugin.name, exc)
+            return [plugin.name]
+
     async def _run_round(
         self,
         identifiers: list[Identifier],
         plugins: list[SourcePlugin],
         overall_concurrency: asyncio.Semaphore,
     ) -> list[Finding]:
+        reporting = self.progress is not None
+        if reporting:
+            checks = [[identifier.value, source]
+                      for identifier in identifiers for plugin in plugins if plugin.supports(identifier)
+                      for source in self._planned(plugin, identifier)]
+            safe_emit(self.progress, {"event": "round", "hop": self._hop, "checks": checks}, log)
+
         async def bound_run(plugin: SourcePlugin, identifier: Identifier) -> list[Finding]:
             if not plugin.supports(identifier):
                 return []
             async with overall_concurrency:
                 try:
-                    return await plugin.run(identifier)
+                    findings = await plugin.run(identifier)
                 except Exception as exc:  # noqa: BLE001 - isolate plugin failures from the run
                     log.error("plugin %s crashed on %s: %s", plugin.name, identifier.value, exc, exc_info=True)
+                    if reporting:
+                        for source in self._planned(plugin, identifier):
+                            self._emit_check(source, identifier, "error")
                     return []
+            if reporting:
+                # Plugins reporting their own checks have already done so;
+                # anything they planned but didn't report (and every check
+                # of a plugin that doesn't report) is settled from what the
+                # plugin returned.
+                for source in self._planned(plugin, identifier):
+                    own = [f for f in findings if f.source == source]
+                    single = source == plugin.name
+                    self._emit_check(source, identifier, outcome_of(findings if single else own))
+            return findings
 
         tasks = [
             bound_run(plugin, identifier)

@@ -73,6 +73,8 @@ class ChessComPlugin(SourcePlugin):
         twitch_url = data.get("twitch_url", "")
         if twitch_url.rstrip("/").rsplit("/", 1)[-1]:
             metadata["twitch_url"] = twitch_url
+            metadata["linked_accounts"] = [{"platform": "twitch", "evidence": "profile_link",
+                                            "username": twitch_url.rstrip("/").rsplit("/", 1)[-1]}]
             discovered.append(Identifier(value=twitch_url.rstrip("/").rsplit("/", 1)[-1], type=IdentifierType.USERNAME))
 
         return [Finding(

@@ -67,6 +67,11 @@ class DevToPlugin(SourcePlugin):
                 "twitter_username": data.get("twitter_username"),
                 "github_username": data.get("github_username"),
                 "website_url": data.get("website_url"),
+                "linked_accounts": [
+                    {"platform": platform, "username": data[key], "evidence": "profile_link"}
+                    for platform, key in (("github", "github_username"), ("twitter", "twitter_username"))
+                    if data.get(key)
+                ],
             },
             discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,

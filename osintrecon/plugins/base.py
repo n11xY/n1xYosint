@@ -7,7 +7,7 @@ configured via `plugins_dir`) — the core engine never needs to change.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import Callable, ClassVar, Optional
 
 from osintrecon.core.http_client import AsyncHttpClient
 from osintrecon.core.models import Finding, Identifier, IdentifierType
@@ -30,6 +30,17 @@ class SourcePlugin(ABC):
     def __init__(self, config: dict, http: AsyncHttpClient):
         self.config = config  # this plugin's section of the source config
         self.http = http
+        # Set by the engine only while it reports progress: a plugin that
+        # makes several independent checks per identifier (username_sites,
+        # one per site) calls report_check(source, identifier, findings) as
+        # each finishes, so a progress view can show them one by one.
+        self.report_check: Optional[Callable[[str, Identifier, list[Finding]], None]] = None
+
+    def planned_checks(self, identifier: Identifier) -> list[str]:
+        """The checks run() will make for this identifier, as the source
+        names their findings carry. One, named after the plugin, unless the
+        plugin reports finer-grained checks itself (see report_check)."""
+        return [self.name]
 
     def supports(self, identifier: Identifier) -> bool:
         return identifier.type in self.accepts

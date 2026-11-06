@@ -66,6 +66,8 @@ class LichessPlugin(SourcePlugin):
         twitch_username = twitch_channel.rstrip("/").rsplit("/", 1)[-1]
         if twitch_username:
             metadata["twitch_url"] = twitch_channel
+            metadata["linked_accounts"] = [{"platform": "twitch", "username": twitch_username,
+                                            "evidence": "profile_link"}]
             discovered.append(Identifier(value=twitch_username, type=IdentifierType.USERNAME))
 
         return [Finding(

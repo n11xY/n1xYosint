@@ -56,6 +56,9 @@ class KeybasePlugin(SourcePlugin):
         # Only proof_types with an unambiguous, directly reusable identifier
         # shape are handled; anything else is skipped rather than guessed at.
         discovered: list[Identifier] = []
+        # The same proofs with their platform kept: core/timeline.py uses
+        # them to tie this account to the other accounts it proves.
+        linked: list[dict] = []
         proofs = ((them.get("proofs_summary") or {}).get("all")) or []
         for proof in proofs:
             if proof.get("state") != 1:  # 1 = currently valid; anything else = revoked/broken
@@ -63,6 +66,7 @@ class KeybasePlugin(SourcePlugin):
             proof_type = proof.get("proof_type")
             if proof_type in ("twitter", "github", "reddit", "hackernews") and proof.get("nametag"):
                 discovered.append(Identifier(value=proof["nametag"], type=IdentifierType.USERNAME))
+                linked.append({"platform": proof_type, "username": proof["nametag"], "evidence": "keybase_proof"})
             elif proof_type in ("dns", "web") and proof.get("service_url"):
                 discovered.append(Identifier(value=proof["service_url"], type=IdentifierType.URL))
 
@@ -78,6 +82,7 @@ class KeybasePlugin(SourcePlugin):
                 "bio": profile.get("bio"),
                 "location": profile.get("location"),
                 "joined": basics.get("ctime"),
+                "linked_accounts": linked,
             },
             discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,

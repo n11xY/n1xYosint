@@ -74,6 +74,10 @@ class SpeedrunComPlugin(SourcePlugin):
                 "twitch_url": (user.get("twitch") or {}).get("uri"),
                 "youtube_url": (user.get("youtube") or {}).get("uri"),
                 "twitter_url": (user.get("twitter") or {}).get("uri"),
+                "linked_accounts": [
+                    {"platform": platform, "username": name, "evidence": "profile_link"}
+                    for platform, name in (("twitch", twitch_username), ("youtube", youtube_username)) if name
+                ],
             },
             discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,
