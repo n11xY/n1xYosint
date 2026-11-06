@@ -67,6 +67,12 @@ sources:
     api_key: null              # optional GitHub PAT -- the commit search API has its own tight
                                 # rate limit (10/min unauthenticated), a token helps
 
+  instagram_graph:              # Meta's official Instagram Graph API (Business Discovery):
+    api_key: null               #   your user access token (or OSINTRECON_INSTAGRAM_GRAPH_API_KEY)
+    ig_user_id: null            #   your own Instagram professional account's id
+    api_version: v27.0          # professional (business/creator) accounts only; see docs/INSTAGRAM.md
+                                # -- NOT live-verified, see the module's docstring
+
   wayback:
     enabled: true               # free, no key -- Internet Archive's CDX API
     profile_urls:               # usernames: profile URLs to look up in the archive, for platforms

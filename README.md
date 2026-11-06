@@ -145,6 +145,7 @@ configuration.
 | `hibp` | breach + paste | email | key required, paid (~$4.39/mo) |
 | `twitch_api` / `steam_api` | social | username | key required (free), upgrades the heuristic site check to a confirmed API result |
 | `telegram_api` | social | username | key required (free bot token via @BotFather) — official Bot API `getChat`; the generic `username_sites` entry for Telegram can't distinguish real from nonexistent (live-verified: byte-identical HTML either way, see [CONTRIBUTING.md](CONTRIBUTING.md)), so this is the only reliable Telegram signal — **not live-verified**, see the module's docstring |
+| `instagram_graph` | social | username | token required (your own Meta app and Instagram professional account) — Meta's official Business Discovery API: professional accounts only, CONFIRMED-grade; anonymous instagram.com checks are restricted, see [docs/INSTAGRAM.md](docs/INSTAGRAM.md) — **not live-verified**, see the module's docstring |
 | `youtube_api` | social | username | key required (free tier), official Data API v3 `channels.list?forHandle=` — a stronger, CONFIRMED-grade alternative to the heuristic `username_sites` entry — **not live-verified**, see the module's docstring |
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
 | `cert_transparency` | domain | domain | free, no key — host names from certificates issued for the domain and its subdomains (crt.sh, Cert Spotter as fallback), with issuers and first/latest issue dates; always `confirmed` (a certificate log is a public record) |

@@ -45,6 +45,22 @@ explicitly configured not-found signal counts as not found, and a login
 wall, challenge page, rate limit or any other unexpected page is reported as
 unavailable -- never as a nonexistent account, and never decided by the HTTP
 status alone.
+
+An entry can also name "restrictions": pieces of a response that mean the
+site declined to answer, each with its kind -- "rate_limited" (Instagram's
+"Please wait a few minutes", "feedback_required"), "auth_required"
+("require_login"), "challenge_required" (challenge or checkpoint) or
+"error_page" (the generic error shell Instagram serves to clients it won't
+show a profile to). A restricted response is never a result: it reads as
+rate limited or access restricted, pauses the site like a 429 does when the
+site has a request policy, and the finding says which restriction it was.
+
+Every finding also carries a uniform status for the source:
+metadata["source_status"] (SUCCESS, PARTIAL, RATE_LIMITED, AUTH_REQUIRED,
+CHALLENGE_REQUIRED, TEMPORARILY_UNAVAILABLE or ERROR), "data_origin"
+(direct, cache or stale_cache), "verification" (verified or unverified) and
+"retry_eligible", plus "cooldown_until" when a pause is known. "Not found"
+produces no finding, so a restriction can never be shown as one.
 """
 from __future__ import annotations
 
@@ -225,6 +241,7 @@ class _Lookup:
     request_sent: bool = True
     evidence_path: Optional[str] = None
     stale_reason: Optional[LookupOutcome] = None
+    restriction: Optional[str] = None
 
 
 def _decoy_username() -> str:
@@ -294,6 +311,21 @@ def _is_found(resp, site: dict, username: str = "") -> bool:
     return resp.status < 400 and bool(not_found_text) and not_found_text not in resp.text
 
 
+RESTRICTION_KINDS = ("rate_limited", "auth_required", "challenge_required", "error_page")
+
+
+def _restriction(resp, site: dict) -> Optional[str]:
+    """The kind of restriction the response body shows, or None. When several
+    markers match, the most specific wins in RESTRICTION_KINDS order: Instagram
+    answers a rate limit as 401 with both "Please wait a few minutes" and
+    "require_login":true, and waiting -- not signing in -- is what it asks."""
+    markers = site.get("restrictions") or {}
+    text = resp.text or ""
+    found = {kind if kind in RESTRICTION_KINDS else "error_page"
+             for marker, kind in markers.items() if marker and marker in text}
+    return next((kind for kind in RESTRICTION_KINDS if kind in found), None)
+
+
 def _classify(resp, site: dict, username: str) -> LookupOutcome:
     """One response -> one outcome. A "found_text" site is held to the
     strict rules in the module docstring; every other site keeps its
@@ -316,9 +348,16 @@ def _classify(resp, site: dict, username: str) -> LookupOutcome:
         # Before any page check: the page at the sign-up URL may itself be a
         # bot challenge, but the redirect alone already answered.
         return LookupOutcome.NOT_FOUND
+    if site.get("found_text") and _has_profile_markers(resp, site, username):
+        # The strict markers include the username itself, so they win over
+        # any restriction text that page code might also happen to contain.
+        return LookupOutcome.PROFILE_FOUND
+    restriction = _restriction(resp, site)
+    if restriction == "rate_limited":
+        return LookupOutcome.RATE_LIMITED
+    if restriction is not None:
+        return LookupOutcome.ACCESS_RESTRICTED
     if site.get("found_text"):
-        if _has_profile_markers(resp, site, username):
-            return LookupOutcome.PROFILE_FOUND
         if _has_not_found_signal(resp, site):
             return LookupOutcome.NOT_FOUND
         if resp.status in (401, 403):
@@ -475,11 +514,16 @@ class UsernameSitesPlugin(SourcePlugin):
         collected_at = getattr(resp, "fetched_at", None) or time.time()
 
         if outcome in _UNAVAILABLE:
-            if outcome is LookupOutcome.ACCESS_RESTRICTED and settings.policy is not None:
-                # A login wall or challenge is the site declining to answer
-                # this network right now. Asking again later in this run (or
-                # in the next one) gets the same, so back off as for a 429.
-                self.http.start_cooldown(source_name)
+            restriction = None if getattr(resp, "skipped", False) else _restriction(resp, site)
+            body_rate_limit = outcome is LookupOutcome.RATE_LIMITED and resp.status != 429
+            resp_cooldown = getattr(resp, "cooldown_until", None)
+            if (outcome is LookupOutcome.ACCESS_RESTRICTED or body_rate_limit) and settings.policy is not None:
+                # A login wall, challenge or "please wait" is the site
+                # declining to answer this network right now. Asking again
+                # later in this run (or the next one) gets the same, so back
+                # off as for a 429 (the client does that itself only for a
+                # real 429 status).
+                resp_cooldown = self.http.start_cooldown(source_name)
             if (stored is not None and stored["payload"].get("outcome") == LookupOutcome.PROFILE_FOUND.value
                     and time.time() <= stored["expires_at"] + settings.stale_ttl):
                 lookup = self._lookup_from_store(stored, "stale")
@@ -489,8 +533,9 @@ class UsernameSitesPlugin(SourcePlugin):
                 outcome=outcome, freshness="unavailable",
                 http_status=resp.status or None, collected_at=collected_at,
                 final_url=getattr(resp, "url", "") or "", error=getattr(resp, "error", None),
-                cooldown_until=getattr(resp, "cooldown_until", None),
+                cooldown_until=resp_cooldown,
                 request_sent=not getattr(resp, "skipped", False),
+                restriction=restriction,
             )
 
         if outcome is LookupOutcome.NOT_FOUND:
@@ -579,6 +624,11 @@ class UsernameSitesPlugin(SourcePlugin):
             metadata["checked_url"] = url
         if lookup.expires_at:
             metadata["cache_expires_at"] = _iso(lookup.expires_at)
+        metadata.update(
+            source_status="PARTIAL" if lookup.freshness == "stale" else "SUCCESS",
+            data_origin={"fresh": "direct", "cached": "cache", "stale": "stale_cache"}[lookup.freshness],
+            retry_eligible=lookup.freshness == "stale",
+        )
 
         status = lookup.status or MatchStatus.PROBABLE
         title = f"{site_name} profile found for '{identifier.value}'"
@@ -598,6 +648,9 @@ class UsernameSitesPlugin(SourcePlugin):
                 "(unverified -- this site's found/not-found signal looked unreliable this run)"
             )
 
+        metadata["verification"] = (
+            "verified" if status in (MatchStatus.CONFIRMED, MatchStatus.PROBABLE) else "unverified"
+        )
         return Finding(
             source=self._source_name(site_name),
             identifier=identifier,
@@ -619,19 +672,40 @@ class UsernameSitesPlugin(SourcePlugin):
         if lookup.outcome is LookupOutcome.NETWORK_ERROR:
             title = f"{site_name}: request failed"
             metadata["error"] = lookup.error
+        elif lookup.outcome is LookupOutcome.RATE_LIMITED and lookup.restriction == "rate_limited":
+            metadata["http_status"] = lookup.http_status
+            metadata["request_sent"] = True
+            metadata["cooldown_until"] = _iso(lookup.cooldown_until)
+            metadata["blocked"] = "rate_limited"
+            title = f"{site_name}: rate limited (asked to wait)"
+            if lookup.cooldown_until:
+                title += f" -- paused until {_readable_time(lookup.cooldown_until)}"
         elif lookup.outcome is LookupOutcome.RATE_LIMITED:
             metadata["http_status"] = 429
             metadata["request_sent"] = lookup.request_sent
             metadata["cooldown_until"] = _iso(lookup.cooldown_until)
             if not lookup.request_sent and lookup.cooldown_until:
+                # Nothing was sent: no HTTP status to report, and the pause
+                # may have followed a sign-in wall or error page, not a 429.
+                metadata["http_status"] = None
+                metadata["suppressed_by_cooldown"] = True
                 title = (
                     f"{site_name}: not checked -- paused until {_readable_time(lookup.cooldown_until)} "
-                    "after a rate limit or sign-in wall"
+                    "after a rate limit, sign-in wall or error page"
                 )
             else:
                 title = f"{site_name}: temporarily unavailable (HTTP 429)"
                 if lookup.cooldown_until:
                     title += f" -- paused until {_readable_time(lookup.cooldown_until)}"
+        elif lookup.outcome is LookupOutcome.ACCESS_RESTRICTED and lookup.restriction:
+            metadata["http_status"] = lookup.http_status
+            metadata["blocked"] = lookup.restriction
+            metadata["cooldown_until"] = _iso(lookup.cooldown_until)
+            title = {
+                "auth_required": f"{site_name}: requires sign-in from this network -- open the link to check by hand",
+                "challenge_required": f"{site_name}: answered with a security challenge -- open the link to check by hand",
+                "error_page": f"{site_name}: served its error page instead of the profile -- open the link to check by hand",
+            }[lookup.restriction]
         elif lookup.outcome is LookupOutcome.ACCESS_RESTRICTED:
             metadata["http_status"] = lookup.http_status
             login_wall = site.get("login_wall")
@@ -651,6 +725,12 @@ class UsernameSitesPlugin(SourcePlugin):
             else:
                 title = f"{site_name}: couldn't tell -- the site didn't serve a readable profile page"
                 metadata["blocked"] = "unreadable_page"
+        metadata.update(
+            source_status=_unavailable_status(lookup, metadata.get("blocked")),
+            data_origin="direct", verification="unverified", retry_eligible=True,
+        )
+        if lookup.cooldown_until and not metadata.get("cooldown_until"):
+            metadata["cooldown_until"] = _iso(lookup.cooldown_until)
         return Finding(
             source=self._source_name(site_name),
             identifier=identifier,
@@ -674,5 +754,20 @@ class UsernameSitesPlugin(SourcePlugin):
             title=f"{site_name}: check failed (internal error)",
             category=site.get("category", self.category),
             metadata={"outcome": LookupOutcome.UNKNOWN.value, "freshness": "unavailable",
-                      "error": f"{type(exc).__name__}: {exc}"},
+                      "error": f"{type(exc).__name__}: {exc}", "source_status": "ERROR",
+                      "data_origin": "direct", "verification": "unverified", "retry_eligible": True},
         )
+
+
+def _unavailable_status(lookup: _Lookup, blocked: Optional[str]) -> str:
+    """The uniform source status for a lookup that produced no answer."""
+    if lookup.outcome is LookupOutcome.RATE_LIMITED:
+        # A pause of ours (nothing sent) is the site being unavailable for
+        # now; only an actual answer from the site is a rate limit.
+        return "RATE_LIMITED" if lookup.request_sent else "TEMPORARILY_UNAVAILABLE"
+    if lookup.outcome is LookupOutcome.ACCESS_RESTRICTED:
+        if blocked in ("login_wall", "auth_required"):
+            return "AUTH_REQUIRED"
+        if blocked == "challenge_required":
+            return "CHALLENGE_REQUIRED"
+    return "TEMPORARILY_UNAVAILABLE"

@@ -48,6 +48,7 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "wayback": ["web.archive.org"],
     "telegram_api": ["api.telegram.org"],
     "youtube_api": ["www.googleapis.com"],
+    "instagram_graph": ["graph.facebook.com"],
     "hackernews": ["hacker-news.firebaseio.com"],
     "devto": ["dev.to"],
     "chess_com": ["api.chess.com"],
