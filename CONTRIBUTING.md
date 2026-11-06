@@ -80,6 +80,12 @@ while `"url"` stays the one that's checked.
 `"browser_headers": false` sends the client's own honest User-Agent instead
 of the browser imitation, for sites whose bot check challenges the latter
 (Last.fm serves the same "Client Challenge" page for every username to it).
+`"not_found_url"` is a piece of the URL a free name is redirected to
+(Bandcamp sends `<name>.bandcamp.com` to its sign-up page for that
+subdomain); a lookup that lands there is "not found" even when the page
+itself is a challenge. `"headers"` adds request headers for that site only
+(YouTube's entry sends the cookie that declines its EU consent page, which
+otherwise answers every name with the same consent screen).
 Adult sites take `"category": "adult"` and `"nsfw": true`; they are only
 checked when the run opts in (`--include-adult`). Several are blocked by
 law in some countries, so prefer a strict entry (`found_text` plus
@@ -120,7 +126,7 @@ all.** Diff the *entire* response (not just the one marker you expect)
 for a real account against a decoy, with the target string normalized
 out — some sites now render everything client-side and serve
 byte-identical HTML regardless of whether the account exists (Telegram's
-`t.me/{username}` and Threads' `threads.net/@{username}` both do this;
+`t.me/{username}` and Threads' `threads.net/@{username}` both did this;
 Twitch looked the same at first glance but turned out to have a real,
 different `og:description` for real vs. nonexistent channels once
 checked properly). If you can't find any distinguishing signal:

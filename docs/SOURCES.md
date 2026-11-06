@@ -310,6 +310,25 @@ New plugin:
   LibraryThing, SourceForge, Unsplash, BeerAdvocate, Rumble, Peerlist,
   Giant Bomb, Backloggd, Reddit, Tumblr, Newgrounds. Not circumvented.
 
+- **Site health check** (2026-11-06): `python -m osintrecon.core.site_health`
+  asks every site about one random name. Six answered "found":
+  - *YouTube*: from EU addresses every profile URL redirects to
+    `consent.youtube.com`. The entry now sends the consent-declined cookie
+    (`SOCS=CAI`), and a consent redirect still reads as "requires sign-in"
+    rather than as an account.
+  - *crates.io*: the profile page is a client-side shell, identical for
+    every name. The entry now checks `crates.io/api/v1/users/{}` (404 for
+    a free name) and links to the profile page.
+  - *Bandcamp*: a free subdomain redirects to `bandcamp.com/signup?new_domain=`,
+    which the production server gets as a bot challenge, and the old
+    not-found text never appeared there. Now: `not_found_url` for that
+    redirect, a profile marker (`"url":"https://{}.bandcamp.com`) for a
+    real page, and the honest User-Agent (the browser one is challenged).
+  - *Threads* and *Spotify*: the anonymous page is the same client-side
+    shell for every name (a few bytes apart: the name itself). Removed.
+  - *Backloggd*: a bot challenge for every request, from home and server.
+    Removed.
+
 ## Second batch (2026-11-05)
 
 Checked like the first batch (end to end locally, real account found and

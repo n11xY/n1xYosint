@@ -117,8 +117,14 @@ def _headers_for(site: dict) -> Optional[dict[str, str]]:
     """The browser headers above, unless the entry says "browser_headers":
     false -- for sites whose bot check challenges a browser User-Agent that
     doesn't behave like a browser (Last.fm serves a "Client Challenge" page
-    to it for every username) while answering the client's own honest one."""
-    return _BROWSER_HEADERS if site.get("browser_headers", True) else None
+    to it for every username) while answering the client's own honest one.
+    An entry's own "headers" are added on top (YouTube gets the cookie that
+    declines its EU consent page, which otherwise answers every name)."""
+    base = _BROWSER_HEADERS if site.get("browser_headers", True) else None
+    extra = site.get("headers")
+    if not extra:
+        return base
+    return {**(base or {}), **extra}
 
 
 class LookupOutcome(str, Enum):
@@ -262,7 +268,16 @@ def _has_profile_markers(resp, site: dict, username: str) -> bool:
     return all(marker in text or marker in decoded for marker in markers)
 
 
+def _redirected_to_not_found(resp, site: dict) -> bool:
+    """Some sites answer a free name by redirecting somewhere telling: Bandcamp
+    sends <name>.bandcamp.com to its sign-up page for that subdomain."""
+    marker = site.get("not_found_url")
+    return bool(marker) and marker in (getattr(resp, "url", "") or "")
+
+
 def _has_not_found_signal(resp, site: dict) -> bool:
+    if _redirected_to_not_found(resp, site):
+        return True
     not_found_text = site.get("not_found_text")
     if not_found_text and not_found_text in (resp.text or ""):
         return True
@@ -297,6 +312,10 @@ def _classify(resp, site: dict, username: str) -> LookupOutcome:
     login_wall = site.get("login_wall")
     if login_wall and login_wall in (getattr(resp, "url", "") or ""):
         return LookupOutcome.ACCESS_RESTRICTED
+    if _redirected_to_not_found(resp, site):
+        # Before any page check: the page at the sign-up URL may itself be a
+        # bot challenge, but the redirect alone already answered.
+        return LookupOutcome.NOT_FOUND
     if site.get("found_text"):
         if _has_profile_markers(resp, site, username):
             return LookupOutcome.PROFILE_FOUND
