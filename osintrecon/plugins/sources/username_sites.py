@@ -349,6 +349,19 @@ class UsernameSitesPlugin(SourcePlugin):
         if metrics is not None:
             setattr(metrics(source_name), counter, getattr(metrics(source_name), counter) + 1)
 
+    def planned_checks(self, identifier: Identifier) -> list[str]:
+        return [self._source_name(site["name"]) for site in self.sites
+                if self.site_settings.get(site["name"], _DEFAULT_SETTINGS).enabled]
+
+    async def _check_and_report(self, site: dict, identifier: Identifier, decoy: str) -> Finding | None:
+        try:
+            result = await self._check_site(site, identifier, decoy)
+        except Exception as exc:  # noqa: BLE001 -- turned into this site's error finding
+            result = self._crash_finding(site, identifier, exc)
+        if self.report_check is not None and self.site_settings.get(site["name"], _DEFAULT_SETTINGS).enabled:
+            self.report_check(self._source_name(site["name"]), identifier, [result] if result is not None else [])
+        return result
+
     async def run(self, identifier: Identifier) -> list[Finding]:
         # One decoy per run (not per site) -- it doesn't need to be
         # per-site-unique, only unpredictable and unregistered, and reusing
@@ -357,7 +370,7 @@ class UsernameSitesPlugin(SourcePlugin):
         # return_exceptions: one site's check failing in an unexpected way
         # must cost that site's result only, not the other 90+.
         results = await asyncio.gather(
-            *(self._check_site(site, identifier, decoy) for site in self.sites), return_exceptions=True
+            *(self._check_and_report(site, identifier, decoy) for site in self.sites), return_exceptions=True
         )
         findings: list[Finding] = []
         for site, result in zip(self.sites, results):

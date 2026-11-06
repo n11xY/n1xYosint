@@ -87,6 +87,13 @@ class WikipediaPlugin(SourcePlugin):
         edited = sorted((w for w in merged if (w.get("editcount") or 0) > 0),
                         key=lambda w: w.get("editcount") or 0, reverse=True)
         name = info.get("name") or identifier.value
+        # The global account's own "registration" is when it was created,
+        # which for accounts older than the 2008-2015 unification is the
+        # unification date, not the sign-up. The earliest registration on
+        # any attached wiki is the real one (ISO strings sort by time).
+        dates = [d for d in [info.get("registration")] + [w.get("registration") for w in merged]
+                 if isinstance(d, str) and d]
+        created = min(dates) if dates else None
         return [Finding(
             source=self.name,
             identifier=identifier,
@@ -96,7 +103,8 @@ class WikipediaPlugin(SourcePlugin):
             category=self.category,
             metadata={
                 "home_wiki": info.get("home"),
-                "created_at": info.get("registration"),
+                "created_at": created,
+                "global_account_created_at": info.get("registration"),
                 "edit_count": info.get("editcount"),
                 "wikis_attached": len(merged),
                 "wikis_edited": len(edited),

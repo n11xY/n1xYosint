@@ -61,6 +61,8 @@ class CodeforcesPlugin(SourcePlugin):
                 "rank": result.get("rank"),
                 "rating": result.get("rating"),
                 "max_rank": result.get("maxRank"),
+                # Unix seconds; read by core/timeline.py.
+                "registered_at": result.get("registrationTimeSeconds"),
             },
             evidence_path=resp.evidence_path,
         )]

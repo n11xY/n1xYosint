@@ -137,7 +137,8 @@ def test_username_finds_the_global_wikimedia_account():
     http = UsernameHttp(FakeResp(data={"query": {"globaluserinfo": {
         "home": "enwiki", "name": "Jane Doe", "registration": "2008-04-12T16:22:49Z", "editcount": 120,
         "merged": [
-            {"wiki": "enwiki", "url": "https://en.wikipedia.org", "editcount": 100},
+            {"wiki": "enwiki", "url": "https://en.wikipedia.org", "editcount": 100,
+             "registration": "2004-02-01T10:00:00Z"},
             {"wiki": "commonswiki", "url": "https://commons.wikimedia.org", "editcount": 20},
             {"wiki": "dewiki", "url": "https://de.wikipedia.org", "editcount": 0},
         ],
@@ -157,6 +158,9 @@ def test_username_finds_the_global_wikimedia_account():
     assert f.metadata["wikis_edited"] == 2
     assert [w["wiki"] for w in f.metadata["top_wikis"]] == ["enwiki", "commonswiki"]
     assert f.metadata["locked"] is False
+    # the earliest wiki registration, not the later global-account date
+    assert f.metadata["created_at"] == "2004-02-01T10:00:00Z"
+    assert f.metadata["global_account_created_at"] == "2008-04-12T16:22:49Z"
 
 
 def test_username_without_an_account_returns_nothing():
