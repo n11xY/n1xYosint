@@ -48,6 +48,18 @@ DEFAULT_CONFIG: dict[str, Any] = {
             # config.yaml to re-enable if the site ever comes back.
             "enabled": False,
         },
+        "discord": {
+            # The username-availability endpoint shares one hard rate limit
+            # (a 429 asked for ~17 minutes, 2026-11-06): ask rarely, remember
+            # answers, and honour Retry-After across searches.
+            "max_concurrency": 1,
+            "minimum_request_interval": 3,     # seconds between request starts, shared across runs
+            "max_retry_attempts": 0,
+            "cooldown_duration": 600,          # after a 429 without Retry-After
+            "max_cooldown_duration": 3600,
+            "cache_ttl": 86400,                # "taken" reused for a day
+            "negative_cache_ttl": 21600,       # "available" reused for six hours
+        },
         "username_sites": {
             # Sites marked "nsfw" in sites.json are skipped unless this is
             # true (or --include-adult is given).

@@ -81,6 +81,16 @@ sources:
   gitlab:
     enabled: true
 
+  discord:                       # username-availability check; one shared, hard rate limit
+    enabled: true
+    max_concurrency: 1
+    minimum_request_interval: 3   # seconds between requests, across runs
+    max_retry_attempts: 0
+    cooldown_duration: 600        # pause after a 429 without Retry-After (Retry-After wins)
+    max_cooldown_duration: 3600
+    cache_ttl: 86400              # reuse "taken" for a day
+    negative_cache_ttl: 21600     # reuse "available" for six hours
+
   gravatar:
     enabled: true
 
