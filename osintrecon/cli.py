@@ -14,12 +14,15 @@ import sys
 
 from rich.console import Console
 
+from osintrecon import __version__
 from osintrecon.core.config import Config
 from osintrecon.core.doctor import run_doctor
 from osintrecon.core.engine import Engine
 from osintrecon.core.logging_setup import setup_logging
 from osintrecon.core.normalize import load_from_file, normalize_batch, normalize_domains
 from osintrecon.output import exporters
+from osintrecon.output.banner import show_banner
+from osintrecon.output.live import ScanProgress
 from osintrecon.output.renderer import render, render_doctor
 
 
@@ -61,6 +64,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Domain to investigate: certificate transparency and registration data (repeatable)")
     parser.add_argument("--include-adult", action="store_true",
                         help="Also check the adult sites in the username database (off by default)")
+    parser.add_argument("--no-banner", action="store_true",
+                        help="Don't print the start-up banner (it's never printed when output is piped)")
+    parser.add_argument("--no-progress", action="store_true", help="Don't show the live progress bar")
+    parser.add_argument("--version", action="version", version=f"n1xYosint {__version__}")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase log verbosity (-v, -vv)")
     parser.add_argument("--log-file", help="Write full logs to this file")
     return parser
@@ -72,11 +79,11 @@ def _collect_raw_identifiers(args: argparse.Namespace) -> list[str]:
         raw.extend(load_from_file(args.file))
     if args.interactive:
         console = Console()
-        console.print("[bold]Interactive mode[/bold] - enter one username, email, or phone number "
-                       "(e.g. +15551234567) per line, blank line to finish:")
+        console.print("[bold]Interactive mode[/bold] [grey62]-- one username, email, phone number "
+                       "(+15551234567) or full name per line; an empty line starts the search[/grey62]")
         while True:
             try:
-                line = input("> ").strip()
+                line = console.input("[bold bright_white]›[/] ").strip()
             except EOFError:
                 break
             if not line:
@@ -106,6 +113,12 @@ def main(argv: list[str] | None = None) -> int:
 
     level = "DEBUG" if args.verbose >= 2 else ("INFO" if args.verbose == 1 else "WARNING")
     log = setup_logging(level=level, log_file=args.log_file)
+
+    console = Console()
+    # The banner and live progress are for a person at a terminal: piped or
+    # redirected output (a file, another program) gets the results only.
+    if console.is_terminal and not args.no_banner:
+        show_banner(console)
 
     if args.doctor:
         try:
@@ -146,11 +159,16 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     _apply_cli_overrides(config, args)
 
-    engine = Engine(config)
-    result = asyncio.run(engine.run(normalization.identifiers, depth=args.depth, search_depth=args.search_depth))
+    if console.is_terminal and not args.no_progress and level == "WARNING":
+        with ScanProgress(console) as progress:
+            engine = Engine(config, progress=progress)
+            result = asyncio.run(engine.run(normalization.identifiers, depth=args.depth,
+                                            search_depth=args.search_depth))
+    else:
+        engine = Engine(config)
+        result = asyncio.run(engine.run(normalization.identifiers, depth=args.depth, search_depth=args.search_depth))
     result.rejected_inputs = normalization.rejected
 
-    console = Console()
     render(result, console=console, show_uncertain=not args.hide_uncertain)
 
     for spec in args.export:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -21,6 +22,49 @@ STATUS_STYLE = {
     MatchStatus.NOT_FOUND: "dim",
 }
 
+STATUS_LABEL = {
+    MatchStatus.CONFIRMED: "✔ confirmed",
+    MatchStatus.PROBABLE: "◐ probable",
+    MatchStatus.UNCERTAIN: "? uncertain",
+}
+
+
+# Human names for plugin slugs (the web UI uses the same ones).
+SOURCE_NAMES = {
+    "cert_transparency": "Certificate transparency", "rdap": "RDAP",
+    "abstractapi_phone": "AbstractAPI Phone", "anilist": "AniList", "bluesky": "Bluesky",
+    "chess_com": "Chess.com", "codeforces": "Codeforces", "codewars": "Codewars",
+    "crossref": "Crossref", "devto": "DEV", "discord": "Discord", "dockerhub": "Docker Hub",
+    "dork_links": "Search dorks", "emailrep": "EmailRep", "github": "GitHub",
+    "github_commit_email": "GitHub commit search", "github_name_search": "GitHub name search",
+    "gitlab": "GitLab", "gravatar": "Gravatar", "hackernews": "Hacker News",
+    "hibp": "Have I Been Pwned", "holehe": "holehe", "hunter_io": "Hunter.io",
+    "instagram_graph": "Instagram (official API)",
+    "keybase": "Keybase", "lichess": "Lichess", "mastodon_social": "Mastodon",
+    "minecraft": "Minecraft", "openalex": "OpenAlex", "orcid": "ORCID",
+    "pastebin_search": "Pastebin search", "phone_lookup": "Phone number parser",
+    "roblox": "Roblox", "scratch": "Scratch", "search_api": "Web search",
+    "speedrun_com": "Speedrun.com", "steam_api": "Steam", "telegram_api": "Telegram",
+    "twitch_api": "Twitch", "twitter_api": "X (Twitter)", "twitter_email": "X (Twitter) email check",
+    "wayback": "Wayback Machine", "wikipedia": "Wikipedia", "xposedornot": "XposedOrNot",
+    "youtube_api": "YouTube",
+}
+
+
+def source_name(source: str) -> str:
+    """'username_sites:GitHub' -> 'GitHub'; 'chess_com' -> 'Chess.com'."""
+    if source.startswith("username_sites:"):
+        return source.split(":", 1)[1]
+    return SOURCE_NAMES.get(source, source)
+
+
+def _problem_text(finding: Finding) -> str:
+    """A source problem's message without the site name it starts with."""
+    name = source_name(finding.source)
+    title = finding.title or ""
+    return title[len(name) + 2:] if title.startswith(name + ": ") else title
+
+
 CONFIDENCE_BUCKET_STYLE = {
     "very strong": "bold green",
     "strong": "green",
@@ -30,7 +74,8 @@ CONFIDENCE_BUCKET_STYLE = {
 }
 
 
-def render(result: RunResult, console: Console | None = None, show_uncertain: bool = True) -> None:
+def render(result: RunResult, console: Console | None = None, show_uncertain: bool = True,
+           summary: bool = True) -> None:
     console = console or Console()
 
     actionable = [
@@ -50,50 +95,55 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
     show_hop = any(f.hop > 0 for f in actionable)
 
     for category, items in sorted(by_category.items()):
-        table = Table(title=f"[bold]{category}[/bold]", show_lines=False, expand=True)
-        table.add_column("Identifier")
+        table = Table(title=f"[bold]{category}[/bold] [grey50]({len(items)})[/grey50]", title_justify="left",
+                      box=box.SIMPLE_HEAD, header_style="grey62", show_lines=False, expand=True)
+        table.add_column("Status", no_wrap=True)
+        table.add_column("Source", no_wrap=True)
+        table.add_column("Identifier", no_wrap=True)
         if show_hop:
             table.add_column("Hop", justify="right")
-        table.add_column("Source")
-        table.add_column("Status")
-        table.add_column("Confidence", justify="right")
-        table.add_column("Title / URL")
+        table.add_column("Finding / URL", ratio=1)
+        table.add_column("Conf.", justify="right", no_wrap=True)
 
         for f in sorted(items, key=lambda x: -x.confidence):
             style = STATUS_STYLE.get(f.status, "")
-            row = [f.identifier.value]
+            row = [
+                f"[{style}]{STATUS_LABEL.get(f.status, f.status.value)}[/{style}]",
+                f"[bold]{source_name(f.source)}[/bold]",
+                f.identifier.value,
+            ]
             if show_hop:
                 row.append(str(f.hop))
             row += [
-                f.source,
-                f"[{style}]{f.status.value}[/{style}]",
-                f"{f.confidence:.2f}",
-                f"{f.title}\n[link={f.source_url}]{f.source_url}[/link]",
+                f"{f.title}\n[grey62][link={f.source_url}]{f.source_url}[/link][/grey62]",
+                f"{f.confidence:.0%}",
             ]
             table.add_row(*row)
         console.print(table)
 
     if errors:
+        # One line per source (a search over several identifiers otherwise
+        # repeats the same site once per identifier).
+        by_source: dict[str, Finding] = {}
+        for e in errors:
+            by_source[e.source] = e
+        lines = [f"[bold]{source_name(src)}[/bold]  [grey62]{_problem_text(e)}[/grey62]"
+                 for src, e in sorted(by_source.items(), key=lambda kv: source_name(kv[0]).lower())]
+        shown = lines[:20]
+        if len(lines) > 20:
+            shown.append(f"[grey50]...and {len(lines) - 20} more[/grey50]")
         console.print(Panel(
-            "\n".join(f"- {e.source}: {e.title} ({e.metadata.get('error', '')})" for e in errors[:20]),
-            title=f"[red]Source errors ({len(errors)})[/red]", border_style="red",
+            "\n".join(shown),
+            title=f"[yellow]Couldn't answer this run ({len(by_source)})[/yellow]", title_align="left",
+            border_style="grey35", subtitle="[grey50]not the same as \"not found\"[/grey50]",
+            subtitle_align="right",
         ))
-        error_sources = sorted({e.source for e in errors})
-        console.print(
-            f"[yellow]Research completed with partial provider availability -- "
-            f"{len(error_sources)} source(s) reported errors: {', '.join(error_sources)}[/yellow]"
-        )
 
     if result.rejected_inputs:
         console.print(Panel(
             "\n".join(f"- {raw!r}: {reason}" for raw, reason in result.rejected_inputs),
             title="[red]Rejected inputs[/red]", border_style="red",
         ))
-
-    stats_table = Table(title="Execution statistics", show_header=False)
-    for key, value in result.stats.to_dict().items():
-        stats_table.add_row(key.replace("_", " "), str(value))
-    console.print(stats_table)
 
     if result.entities:
         multi = [e for e in result.entities if len(e.identifiers) > 1]
@@ -120,6 +170,36 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
                     title=f"[{style}]Entity {e.entity_id} -- {bucket} ({e.confidence:.0%})[/{style}]",
                     border_style=style or "cyan",
                 ))
+
+    if summary:
+        render_summary(result, console, show_uncertain)
+
+def render_summary(result: RunResult, console: Console | None = None, show_uncertain: bool = True) -> None:
+    """The closing summary: what was found, what couldn't answer, and what the run cost."""
+    console = console or Console()
+    actionable = [
+        f for f in result.findings
+        if f.status not in (MatchStatus.NOT_FOUND, MatchStatus.ERROR)
+        and (show_uncertain or f.status != MatchStatus.UNCERTAIN)
+    ]
+    errors = [f for f in result.findings if f.status == MatchStatus.ERROR]
+    counts = {status: sum(1 for f in actionable if f.status is status)
+              for status in (MatchStatus.CONFIRMED, MatchStatus.PROBABLE, MatchStatus.UNCERTAIN)}
+    stats = result.stats
+    summary = (
+        f"[bold]{len(actionable)} finding{'s' if len(actionable) != 1 else ''}[/bold]  "
+        f"[bold green]{counts[MatchStatus.CONFIRMED]} confirmed[/bold green] · "
+        f"[yellow]{counts[MatchStatus.PROBABLE]} probable[/yellow] · "
+        f"[dim yellow]{counts[MatchStatus.UNCERTAIN]} uncertain[/dim yellow]"
+    )
+    if errors:
+        summary += f"  [grey62]· {len({e.source for e in errors})} couldn't answer[/grey62]"
+    details = (
+        f"[grey50]{stats.sources_queried} source modules · {stats.requests_sent} requests "
+        f"({stats.cache_hits} from cache) · {stats.duplicates_removed} duplicates merged · "
+        f"{stats.elapsed:.1f}s[/grey50]"
+    )
+    console.print(Panel(f"{summary}\n{details}", border_style="grey35", box=box.ROUNDED))
 
 
 def render_doctor(report: DoctorReport, console: Console | None = None, verbose: bool = False) -> None:
