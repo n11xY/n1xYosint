@@ -763,11 +763,14 @@ def test_cancelling_a_search_mid_request_leaves_nothing_behind(tmp_path):
 def mirror_site(base):
     return {"name": "Instagram (via Mirror)", "category": "social", "url": base + "/ig/{}/",
             "profile_url": "https://www.instagram.com/{}/", "check": "message",
-            "found_text": ["<span>Followers</span>", "@{} in Instagram"], "lowercase": True,
+            "found_text": ["alt=\"{} avatar\"", "@{} in Instagram"], "lowercase": True,
             "mirror_of": "Instagram", "found_only": True}
 
 
-MIRROR_FOUND = '<meta content="View latest posts and stories by @{name} in Instagram."><span>Followers</span>'
+MIRROR_FOUND = ('<meta content="View latest posts and stories by @{name} in Instagram.">'
+                '<img alt="{name} avatar"><span>Followers</span>')
+MIRROR_PRIVATE = ('<meta content="View latest posts and stories by @{name} in Instagram.">'
+                  '<img alt="{name} avatar">This profile is private')
 MIRROR_UNKNOWN = '<meta content="View latest posts and stories by @{name} in Instagram.">verify you are not a bot'
 
 
@@ -791,6 +794,13 @@ def test_a_mirror_finding_is_labelled_third_party_and_links_to_the_platform():
     assert found.metadata["data_origin"] == "third_party"
     assert found.metadata["verification"] == "unverified"
     assert found.metadata["checked_url"].endswith("/ig/natgeo/")
+
+
+def test_a_private_profile_on_the_mirror_still_counts_as_found():
+    (found,), = mirror_scan(lambda r: web.Response(text=MIRROR_PRIVATE.format(name=r.match_info["user"])),
+                            ["someone"])
+    assert found.status == MatchStatus.PROBABLE
+    assert found.metadata["data_origin"] == "third_party"
 
 
 def test_a_found_only_mirror_is_silent_when_it_cannot_tell():

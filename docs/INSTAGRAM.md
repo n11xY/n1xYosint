@@ -117,9 +117,12 @@ What this rules out and rules in:
 
 **`username_sites` → Instagram (via Dumpor)**: dumpor.io, a public Instagram viewer:
 
-- **What it shows.** A public profile's stats (posts, followers, following)
-  are in the page it serves, from home and from the server (checked
-  2026-11-06 with `natgeo` and `instagram`).
+- **What it shows.** The profile header (avatar, name, and for public
+  accounts the stats) is in the page it serves, from home and from the
+  server (checked 2026-11-06 with `natgeo` and `instagram`). Private
+  accounts show the same header with "This profile is private", and count
+  as found too: the marker is the avatar's `alt` text, which names the
+  account.
 - **What it can't show.** For a name with no account it shows only its own
   bot check, with nothing that says "no account". So the entry is
   `found_only`: a found profile is reported, and anything else is silent,
