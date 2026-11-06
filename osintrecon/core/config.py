@@ -78,6 +78,19 @@ DEFAULT_CONFIG: dict[str, Any] = {
                     # rate-limited site in the database.
                     "decoy_verification_enabled": False,
                 },
+                # A third-party Instagram viewer (see docs/INSTAGRAM.md). It
+                # runs a bot check of its own, so: gently, one at a time,
+                # and a found profile is reused for a day. Its markers are
+                # stats only a real profile shows, so a decoy adds nothing.
+                "Instagram (via Dumpor)": {
+                    "max_concurrency": 1,
+                    "minimum_request_interval": 3,
+                    "cooldown_duration": 900,
+                    "max_cooldown_duration": 21600,
+                    "max_retry_attempts": 0,
+                    "cache_ttl": 86400,
+                    "decoy_verification_enabled": False,
+                },
             },
         },
     },

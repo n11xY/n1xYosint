@@ -756,3 +756,57 @@ def test_cancelling_a_search_mid_request_leaves_nothing_behind(tmp_path):
     left_inflight, stored = asyncio.run(go())
     assert left_inflight == {}     # a later search starts a fresh lookup
     assert stored is None          # nothing half-finished was cached
+
+
+# -- third-party mirrors: labelled, and silent when they can't tell ----------
+
+def mirror_site(base):
+    return {"name": "Instagram (via Mirror)", "category": "social", "url": base + "/ig/{}/",
+            "profile_url": "https://www.instagram.com/{}/", "check": "message",
+            "found_text": ["<span>Followers</span>", "@{} in Instagram"], "lowercase": True,
+            "mirror_of": "Instagram", "found_only": True}
+
+
+MIRROR_FOUND = '<meta content="View latest posts and stories by @{name} in Instagram."><span>Followers</span>'
+MIRROR_UNKNOWN = '<meta content="View latest posts and stories by @{name} in Instagram.">verify you are not a bot'
+
+
+def mirror_scan(handler, names):
+    async def go():
+        async with Server(handler) as server:
+            async with AsyncHttpClient(retries=0) as http:
+                plugin = UsernameSitesPlugin({"site_settings": {"Instagram (via Mirror)": {
+                    "decoy_verification_enabled": False}}}, http)
+                plugin.sites = [mirror_site(server.base)]
+                return [await plugin.run(Identifier(value=n, type=IdentifierType.USERNAME)) for n in names]
+    return asyncio.run(go())
+
+
+def test_a_mirror_finding_is_labelled_third_party_and_links_to_the_platform():
+    (found,), = mirror_scan(lambda r: web.Response(text=MIRROR_FOUND.format(name=r.match_info["user"])),
+                            ["NatGeo"])
+    assert found.status == MatchStatus.PROBABLE
+    assert found.source_url == "https://www.instagram.com/natgeo/"
+    assert found.metadata["mirror_of"] == "Instagram"
+    assert found.metadata["data_origin"] == "third_party"
+    assert found.metadata["verification"] == "unverified"
+    assert found.metadata["checked_url"].endswith("/ig/natgeo/")
+
+
+def test_a_found_only_mirror_is_silent_when_it_cannot_tell():
+    results = mirror_scan(lambda r: web.Response(text=MIRROR_UNKNOWN.format(name=r.match_info["user"])),
+                          ["nobody"])
+    assert results == [[]]
+    # ...and when blocked or rate limited: never a "not found", never noise.
+    assert mirror_scan(lambda r: web.Response(status=403, text="no"), ["nobody"]) == [[]]
+    assert mirror_scan(lambda r: web.Response(status=429), ["nobody"]) == [[]]
+
+
+def test_the_shipped_dumpor_entry_is_a_found_only_instagram_mirror():
+    import json
+    from pathlib import Path
+    sites = json.loads(Path(username_sites.DEFAULT_SITES_PATH).read_text(encoding="utf-8"))
+    dumpor = next(s for s in sites if s["name"] == "Instagram (via Dumpor)")
+    assert dumpor["mirror_of"] == "Instagram" and dumpor["found_only"] is True
+    assert dumpor["profile_url"] == "https://www.instagram.com/{}/"
+    assert DEFAULT_CONFIG["sources"]["username_sites"]["site_settings"]["Instagram (via Dumpor)"]["max_concurrency"] == 1

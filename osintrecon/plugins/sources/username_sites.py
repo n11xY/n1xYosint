@@ -61,6 +61,14 @@ CHALLENGE_REQUIRED, TEMPORARILY_UNAVAILABLE or ERROR), "data_origin"
 (direct, cache or stale_cache), "verification" (verified or unverified) and
 "retry_eligible", plus "cooldown_until" when a pause is known. "Not found"
 produces no finding, so a restriction can never be shown as one.
+
+A third-party mirror of a platform ("mirror_of": "Instagram") is labelled as
+such: its findings carry data_origin "third_party" and verification
+"unverified", since the answer is the mirror's, not the platform's. A site
+that can only ever confirm an account ("found_only": true -- a mirror that
+shows a profile when there is one but nothing telling when there isn't)
+reports found profiles only and stays silent otherwise, instead of adding a
+"couldn't tell" row to every search.
 """
 from __future__ import annotations
 
@@ -606,6 +614,8 @@ class UsernameSitesPlugin(SourcePlugin):
                  profile_url: Optional[str] = None) -> Finding | None:
         shown_url = profile_url or url
         if lookup.freshness == "unavailable":
+            if site.get("found_only"):
+                return None
             return self._unavailable_finding(site, identifier, shown_url, lookup)
         if lookup.outcome is not LookupOutcome.PROFILE_FOUND:
             return None  # don't clutter results with every non-match
@@ -651,6 +661,9 @@ class UsernameSitesPlugin(SourcePlugin):
         metadata["verification"] = (
             "verified" if status in (MatchStatus.CONFIRMED, MatchStatus.PROBABLE) else "unverified"
         )
+        if site.get("mirror_of"):
+            metadata.update(mirror_of=site["mirror_of"], data_origin="third_party", verification="unverified",
+                            checked_url=url)
         return Finding(
             source=self._source_name(site_name),
             identifier=identifier,

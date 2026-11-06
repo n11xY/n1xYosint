@@ -16,6 +16,8 @@ to configure it. Investigated 2026-11-06.
 - What can still be answered comes from:
   - **Meta's official Graph API** (`instagram_graph`): professional accounts
     only, your own token.
+  - **A third-party viewer** (`Instagram (via Dumpor)`): found accounts only,
+    labelled third-party and unverified.
   - **Profiles seen before** (`username_sites` result cache): shown as stale
     and uncertain.
   - **Internet Archive captures** (`wayback`): always uncertain.
@@ -60,7 +62,7 @@ What this rules out and rules in:
 | [instagrapi](https://github.com/subzeroid/instagrapi) | Private mobile and web APIs. Its README recommends authenticated sessions for production, calls anonymous paths "opportunistic", and points to official APIs or a paid hosted provider. | No: needs an Instagram account. Account, proxy and challenge handling would be circumvention. |
 | [Osintgram](https://github.com/Datalux/Osintgram) | A HikerAPI (paid, third-party) key, or an instagrapi login with your own account. | No: a third-party paid scraper or a logged-in account. |
 | [maigret](https://github.com/soxoj/maigret) | Probes `web_profile_info` with `x-ig-app-id` and a referer, and looks for `"biography"`. | No: 429 from home, and a misleading 404 from the server (see the table above). |
-| [sherlock](https://github.com/sherlock-project/sherlock) | Status code check, probing `imginn.com/<name>` (a third-party Instagram viewer) instead of instagram.com. | Not adopted: a third-party mirror that itself scrapes Instagram, whose answer is neither Instagram's nor verifiable. |
+| [sherlock](https://github.com/sherlock-project/sherlock) | Status code check, probing `imginn.com/<name>` (a third-party Instagram viewer) instead of instagram.com. Any answer other than 200 reads as "not found". | imginn serves a Cloudflare challenge (403) to both our networks for every name, so Sherlock's rule would report every account as nonexistent. The idea, a viewer that still shows public profiles, is adopted with Dumpor (below), without that rule. |
 | [Meta Graph API: Business Discovery](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/business-discovery) | Official. Looks up professional accounts (business/creator) by username with your own token. | **Yes**: implemented as `instagram_graph`. |
 
 ## What n1xYosint does now
@@ -112,6 +114,28 @@ What this rules out and rules in:
 - **Token handling.** The token goes in the `Authorization` header only, so
   it never appears in URLs, logs, cache keys or evidence. Responses aren't
   cached.
+
+**`username_sites` → Instagram (via Dumpor)**: dumpor.io, a public Instagram viewer:
+
+- **What it shows.** A public profile's stats (posts, followers, following)
+  are in the page it serves, from home and from the server (checked
+  2026-11-06 with `natgeo` and `instagram`).
+- **What it can't show.** For a name with no account it shows only its own
+  bot check, with nothing that says "no account". So the entry is
+  `found_only`: a found profile is reported, and anything else is silent,
+  never "not found".
+- **How a match is labelled.** PROBABLE, with `data_origin: third_party`,
+  `verification: unverified` and `mirror_of: Instagram`, linking to
+  instagram.com.
+- **Gentle by default.** One request at a time, 3 s apart, found results
+  cached for 24 h, no decoy request.
+- **No bypass.** Its bot check is not solved or bypassed; only what the page
+  serves is read.
+- **Other viewers checked the same day:**
+  - imginn, imgsed, pixwox, picnob: Cloudflare challenge.
+  - picuki: now redirects to a TikTok viewer.
+  - greatfon, smihub: the same pages as Dumpor.
+  - Several others: unreachable, or the same page for every name.
 
 **`wayback`** (unchanged): Internet Archive captures of `instagram.com/<name>/`.
 These are third-party historical observations, always reported as uncertain.
@@ -170,6 +194,10 @@ sources:
 - `instagram_graph` covers professional accounts only, and only with your own
   token. It has not been tested against the live API (no token was
   available); the shapes follow Meta's reference.
+- The Dumpor entry depends on a third party that can change its pages, add a
+  blocking challenge or disappear. Its findings are the viewer's view of
+  Instagram, not Instagram's own answer, and it can't say that an account
+  doesn't exist.
 - Wayback captures say an account existed when it was archived, not that it
   exists now.
 - Tests use a local server and fakes only. No test contacts Instagram or Meta.
