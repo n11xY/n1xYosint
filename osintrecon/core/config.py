@@ -53,10 +53,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
             # true (or --include-adult is given).
             "include_adult": False,
             # Per-site overrides, keyed by the site's name in sites.json
-            # (see username_sites.py). Instagram gets its own, deliberately
-            # cautious request handling: it rate-limits or login-walls
-            # anonymous traffic (hard from datacenter IPs), and every extra
-            # request makes that worse. None of these numbers are Instagram's
+            # (see username_sites.py). Instagram -- checked through the
+            # dumpor.io viewer, see docs/INSTAGRAM.md -- gets deliberately
+            # cautious request handling: the viewer runs a bot check of its
+            # own, and instagram.com itself rate-limits or login-walls
+            # anonymous traffic. None of these numbers are Instagram's
             # limits -- it doesn't publish any -- they're conservative
             # defaults, all overridable in config.yaml.
             "site_settings": {
@@ -76,19 +77,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
                     # so a decoy request can't catch anything it doesn't --
                     # it would only spend another request on the most
                     # rate-limited site in the database.
-                    "decoy_verification_enabled": False,
-                },
-                # A third-party Instagram viewer (see docs/INSTAGRAM.md). It
-                # runs a bot check of its own, so: gently, one at a time,
-                # and a found profile is reused for a day. Its markers are
-                # stats only a real profile shows, so a decoy adds nothing.
-                "Instagram (via Dumpor)": {
-                    "max_concurrency": 1,
-                    "minimum_request_interval": 3,
-                    "cooldown_duration": 900,
-                    "max_cooldown_duration": 21600,
-                    "max_retry_attempts": 0,
-                    "cache_ttl": 86400,
                     "decoy_verification_enabled": False,
                 },
             },

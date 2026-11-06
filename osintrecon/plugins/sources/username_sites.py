@@ -68,7 +68,9 @@ such: its findings carry data_origin "third_party" and verification
 that can only ever confirm an account ("found_only": true -- a mirror that
 shows a profile when there is one but nothing telling when there isn't)
 reports found profiles only and stays silent otherwise, instead of adding a
-"couldn't tell" row to every search.
+"couldn't tell" row to every search. "confirmed": true shows a found profile
+as CONFIRMED where the markers are strong enough to trust (the Instagram
+entry, whose markers are the profile header only a real account has).
 """
 from __future__ import annotations
 
@@ -552,7 +554,8 @@ class UsernameSitesPlugin(SourcePlugin):
                                  settings.negative_cache_ttl, collected_at)
             return _Lookup(outcome=outcome, freshness="fresh", http_status=resp.status, collected_at=collected_at)
 
-        status = MatchStatus.CONFIRMED if site.get("check", "status") == "status" else MatchStatus.PROBABLE
+        status = (MatchStatus.CONFIRMED if site.get("check", "status") == "status" or site.get("confirmed")
+                  else MatchStatus.PROBABLE)
         if settings.decoy_verification_enabled:
             decoy_check, decoy_failed = await self._decoy_check(site, source_name, decoy, get_kwargs)
             if decoy_failed:
@@ -662,8 +665,11 @@ class UsernameSitesPlugin(SourcePlugin):
             "verified" if status in (MatchStatus.CONFIRMED, MatchStatus.PROBABLE) else "unverified"
         )
         if site.get("mirror_of"):
-            metadata.update(mirror_of=site["mirror_of"], data_origin="third_party", verification="unverified",
-                            checked_url=url)
+            # Where the answer came from stays on record even when the entry
+            # is trusted enough to show as the platform itself.
+            metadata.update(mirror_of=site["mirror_of"], data_origin="third_party", checked_url=url)
+            if status is not MatchStatus.CONFIRMED:
+                metadata["verification"] = "unverified"
         return Finding(
             source=self._source_name(site_name),
             identifier=identifier,

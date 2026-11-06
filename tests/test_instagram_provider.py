@@ -559,11 +559,16 @@ def test_engine_applies_the_instagram_defaults_and_reports_its_metrics(tmp_path)
 # -- restrictions observed live (2026-11-06) and uniform source status --------
 
 def production_restrictions():
-    """The Instagram entry's restriction markers, as shipped in sites.json."""
-    import json
-    from pathlib import Path
-    sites = json.loads(Path(username_sites.DEFAULT_SITES_PATH).read_text(encoding="utf-8"))
-    return next(s for s in sites if s["name"] == "Instagram")["restrictions"]
+    """The restriction markers instagram.com itself answered with (2026-11-06),
+    for a direct check like the one sites.json used to ship."""
+    return {
+        "httpErrorPage": "error_page",
+        "\"require_login\":true": "auth_required",
+        "challenge_required": "challenge_required",
+        "checkpoint_required": "challenge_required",
+        "feedback_required": "rate_limited",
+        "Please wait a few minutes": "rate_limited",
+    }
 
 
 def restricted_scan(tmp_path, handler, names=("someone",), runs=1, **setting_overrides):
@@ -812,11 +817,32 @@ def test_a_found_only_mirror_is_silent_when_it_cannot_tell():
     assert mirror_scan(lambda r: web.Response(status=429), ["nobody"]) == [[]]
 
 
-def test_the_shipped_dumpor_entry_is_a_found_only_instagram_mirror():
+def test_the_shipped_instagram_entry_checks_through_dumpor_and_confirms():
     import json
     from pathlib import Path
     sites = json.loads(Path(username_sites.DEFAULT_SITES_PATH).read_text(encoding="utf-8"))
-    dumpor = next(s for s in sites if s["name"] == "Instagram (via Dumpor)")
-    assert dumpor["mirror_of"] == "Instagram" and dumpor["found_only"] is True
-    assert dumpor["profile_url"] == "https://www.instagram.com/{}/"
-    assert DEFAULT_CONFIG["sources"]["username_sites"]["site_settings"]["Instagram (via Dumpor)"]["max_concurrency"] == 1
+    entries = [s for s in sites if s["name"] == "Instagram"]
+    assert len(entries) == 1
+    (instagram,) = entries
+    assert instagram["url"].startswith("https://dumpor.io/")
+    assert instagram["found_only"] is True and instagram["confirmed"] is True
+    assert instagram["profile_url"] == "https://www.instagram.com/{}/"
+    assert DEFAULT_CONFIG["sources"]["username_sites"]["site_settings"]["Instagram"]["max_concurrency"] == 1
+
+
+def test_a_confirmed_mirror_shows_as_the_platform_and_keeps_its_origin_on_record():
+    async def go():
+        async with Server(lambda r: web.Response(text=MIRROR_FOUND.format(name=r.match_info["user"]))) as server:
+            async with AsyncHttpClient(retries=0) as http:
+                plugin = UsernameSitesPlugin({"site_settings": {"Instagram": settings()}}, http)
+                site = dict(mirror_site(server.base), name="Instagram", confirmed=True)
+                plugin.sites = [site]
+                return await plugin.run(Identifier(value="natgeo", type=IdentifierType.USERNAME))
+
+    (found,) = asyncio.run(go())
+    assert found.status == MatchStatus.CONFIRMED
+    assert found.source == "username_sites:Instagram"
+    assert found.title == "Instagram profile found for 'natgeo'"
+    assert found.metadata["verification"] == "verified"
+    assert found.metadata["data_origin"] == "third_party"
+    assert found.metadata["checked_url"].endswith("/ig/natgeo/")

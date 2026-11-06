@@ -9,15 +9,14 @@ to configure it. Investigated 2026-11-06.
   home connection or from a datacenter server. No request pattern on our side
   causes this, and none fixes it without circumventing Instagram's access
   controls, which this project doesn't do.
-- The `username_sites` check therefore reports Instagram's answer for what it
-  is: rate limited, sign-in required, challenge, or Instagram's error page.
-  It never reports "not found" for any of them. It pauses Instagram after
-  such an answer, and the pause holds across searches and processes.
-- What can still be answered comes from:
+- So the `username_sites` **Instagram** check asks **dumpor.io**, a public
+  Instagram viewer that still shows profiles (public and private), instead of
+  instagram.com. A found account is shown as Instagram, CONFIRMED. Where the
+  answer came from stays in the finding's metadata. A name the viewer shows
+  nothing for is never reported as "not found".
+- Other sources:
   - **Meta's official Graph API** (`instagram_graph`): professional accounts
     only, your own token.
-  - **A third-party viewer** (`Instagram (via Dumpor)`): found accounts only,
-    labelled third-party and unverified.
   - **Profiles seen before** (`username_sites` result cache): shown as stale
     and uncertain.
   - **Internet Archive captures** (`wayback`): always uncertain.
@@ -67,11 +66,39 @@ What this rules out and rules in:
 
 ## What n1xYosint does now
 
-**`username_sites` → Instagram** (`config/sites.json`, `osintrecon/plugins/sources/username_sites.py`):
+**`username_sites` → Instagram** (`config/sites.json`) checks through dumpor.io:
 
-- **Strict classification.** Only the profile markers (`Instagram photos and
-  videos` and `@<name>`) count as found, and nothing counts as not found.
-- **Restrictions** recognised from the response:
+- **What it shows.** The profile header (avatar, name, and for public
+  accounts the stats) is in the page dumpor.io serves, from home and from the
+  server (checked 2026-11-06 with `natgeo` and `instagram`). Private accounts
+  show the same header with "This profile is private". The marker is the
+  avatar's `alt` text, which names the account, so both count as found.
+- **What it can't show.** For a name with no account it shows only its own
+  bot check, with nothing that says "no account". The entry is therefore
+  `found_only`: a found profile is reported, and anything else is silent,
+  never "not found".
+- **How a match is shown.** As **Instagram**, **CONFIRMED** (`confirmed:
+  true`), linking to instagram.com. The metadata keeps where it came from:
+  `data_origin: third_party`, `mirror_of: Instagram`, and `checked_url` (the
+  dumpor.io page).
+- **No bypass.** Its bot check is not solved or bypassed; only what the page
+  serves is read.
+- **Other viewers checked the same day:**
+  - imginn, imgsed, pixwox, picnob: Cloudflare challenge.
+  - picuki: now redirects to a TikTok viewer.
+  - greatfon, smihub: the same pages as Dumpor.
+  - Several others: unreachable, or the same page for every name.
+- **The direct instagram.com check has been removed.** It was restricted
+  from every network tested.
+
+**Request handling for Instagram** (`osintrecon/plugins/sources/username_sites.py`):
+this applies to any site with a request policy. It was built for the direct
+check and now governs the viewer.
+
+- **Strict classification.** Only the entry's profile markers count as
+  found. An entry with no not-found signal never reports "not found".
+- **Restrictions**: a site entry can list restriction markers, as the direct
+  check did with what instagram.com answered:
   - `"Please wait a few minutes"` and `feedback_required` → **RATE_LIMITED**.
   - `"require_login":true` and the login redirect → **AUTH_REQUIRED**.
   - `challenge_required` and `checkpoint_required` → **CHALLENGE_REQUIRED**.
@@ -114,31 +141,6 @@ What this rules out and rules in:
 - **Token handling.** The token goes in the `Authorization` header only, so
   it never appears in URLs, logs, cache keys or evidence. Responses aren't
   cached.
-
-**`username_sites` → Instagram (via Dumpor)**: dumpor.io, a public Instagram viewer:
-
-- **What it shows.** The profile header (avatar, name, and for public
-  accounts the stats) is in the page it serves, from home and from the
-  server (checked 2026-11-06 with `natgeo` and `instagram`). Private
-  accounts show the same header with "This profile is private", and count
-  as found too: the marker is the avatar's `alt` text, which names the
-  account.
-- **What it can't show.** For a name with no account it shows only its own
-  bot check, with nothing that says "no account". So the entry is
-  `found_only`: a found profile is reported, and anything else is silent,
-  never "not found".
-- **How a match is labelled.** PROBABLE, with `data_origin: third_party`,
-  `verification: unverified` and `mirror_of: Instagram`, linking to
-  instagram.com.
-- **Gentle by default.** One request at a time, 3 s apart, found results
-  cached for 24 h, no decoy request.
-- **No bypass.** Its bot check is not solved or bypassed; only what the page
-  serves is read.
-- **Other viewers checked the same day:**
-  - imginn, imgsed, pixwox, picnob: Cloudflare challenge.
-  - picuki: now redirects to a TikTok viewer.
-  - greatfon, smihub: the same pages as Dumpor.
-  - Several others: unreachable, or the same page for every name.
 
 **`wayback`** (unchanged): Internet Archive captures of `instagram.com/<name>/`.
 These are third-party historical observations, always reported as uncertain.
@@ -197,9 +199,10 @@ sources:
 - `instagram_graph` covers professional accounts only, and only with your own
   token. It has not been tested against the live API (no token was
   available); the shapes follow Meta's reference.
-- The Dumpor entry depends on a third party that can change its pages, add a
-  blocking challenge or disappear. Its findings are the viewer's view of
-  Instagram, not Instagram's own answer, and it can't say that an account
+- The Instagram check depends on dumpor.io, a third party that can change its
+  pages, add a blocking challenge or disappear. If it does, Instagram
+  findings simply stop appearing. Its findings are the viewer's view of
+  Instagram, shown as CONFIRMED by choice, and it can't say that an account
   doesn't exist.
 - Wayback captures say an account existed when it was archived, not that it
   exists now.
