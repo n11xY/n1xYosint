@@ -87,6 +87,15 @@ n1xyosint -u johndoe --depth 2
 # unrelated to --depth above. Export an HTML report and a JSON identity graph.
 n1xyosint -n "John Doe" --search-depth deep --export html:report.html --export graph:graph.json
 
+# a domain: registration data (RDAP) and every host name in the public
+# certificate-transparency logs (crt.sh, falling back to Cert Spotter)
+n1xyosint -d example.com
+
+# is every site in the username database still answering correctly? Asks
+# each one about a random, unregistered name; a site that says "found" is
+# broken for every search. Writes a JSON report.
+python -m osintrecon.core.site_health --out site_health.json
+
 # check setup before running a real scan: config, filesystem paths, and
 # DNS reachability for every enabled source's domain(s)
 n1xyosint --doctor
@@ -138,6 +147,8 @@ configuration.
 | `telegram_api` | social | username | key required (free bot token via @BotFather) — official Bot API `getChat`; the generic `username_sites` entry for Telegram can't distinguish real from nonexistent (live-verified: byte-identical HTML either way, see [CONTRIBUTING.md](CONTRIBUTING.md)), so this is the only reliable Telegram signal — **not live-verified**, see the module's docstring |
 | `youtube_api` | social | username | key required (free tier), official Data API v3 `channels.list?forHandle=` — a stronger, CONFIRMED-grade alternative to the heuristic `username_sites` entry — **not live-verified**, see the module's docstring |
 | `hunter_io` | profile-directory | email | key required (free tier), deliverability check |
+| `cert_transparency` | domain | domain | free, no key — host names from certificates issued for the domain and its subdomains (crt.sh, Cert Spotter as fallback), with issuers and first/latest issue dates; always `confirmed` (a certificate log is a public record) |
+| `rdap` | domain | domain | free, no key — the registry's RDAP record via rdap.org: creation/expiry dates, registrar, name servers, and the registrant only when the registry publishes it (redacted values are skipped) |
 | `phone_lookup` | phone | phone | free, no key, no API call — offline validity/country/carrier/line-type via libphonenumber |
 | `abstractapi_phone` | phone | phone | key required (free tier), live carrier/line-type/location lookup — **not live-verified**, see the module's docstring |
 | `search_api` | search-engine | username, email, phone, name | key required (free tier), disabled by default — Google Custom Search API; the query itself is just the quoted identifier value (no `site:`/`intitle:` dork templating in this plugin, though the underlying Google API accepts those operators if you type them directly into a query); **not live-verified**, see the module's docstring |

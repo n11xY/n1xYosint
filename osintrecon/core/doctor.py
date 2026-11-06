@@ -62,6 +62,8 @@ PLUGIN_DOMAINS: dict[str, list[str]] = {
     "github_name_search": ["api.github.com"],
     "wikipedia": ["en.wikipedia.org", "meta.wikimedia.org"],
     "pgp_keys": ["keys.openpgp.org", "keyserver.ubuntu.com"],
+    "cert_transparency": ["crt.sh", "api.certspotter.com"],
+    "rdap": ["rdap.org"],
     "orcid": ["pub.orcid.org"],
     "openalex": ["api.openalex.org"],
     "crossref": ["api.crossref.org"],

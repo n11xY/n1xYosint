@@ -18,7 +18,7 @@ from osintrecon.core.config import Config
 from osintrecon.core.doctor import run_doctor
 from osintrecon.core.engine import Engine
 from osintrecon.core.logging_setup import setup_logging
-from osintrecon.core.normalize import load_from_file, normalize_batch
+from osintrecon.core.normalize import load_from_file, normalize_batch, normalize_domains
 from osintrecon.output import exporters
 from osintrecon.output.renderer import render, render_doctor
 
@@ -57,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
                          help="How much each NAME-based source (orcid/openalex/crossref/"
                               "github_name_search/wikipedia) does per identifier: result caps, and "
                               "in 'deep' an extra name-order variant. Unrelated to --depth. Default: normal.")
+    parser.add_argument("-d", "--domain", action="append", default=[],
+                        help="Domain to investigate: certificate transparency and registration data (repeatable)")
     parser.add_argument("--include-adult", action="store_true",
                         help="Also check the adult sites in the username database (off by default)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase log verbosity (-v, -vv)")
@@ -123,10 +125,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if has_problems else 0
 
     raw_identifiers = _collect_raw_identifiers(args)
-    if not raw_identifiers:
-        parser.error("no identifiers supplied: use -u/-e, --file, or --interactive")
+    if not raw_identifiers and not args.domain:
+        parser.error("no identifiers supplied: use -u/-e/-d, --file, or --interactive")
 
     normalization = normalize_batch(raw_identifiers)
+    domains = normalize_domains(args.domain)
+    normalization.identifiers.extend(domains.identifiers)
+    normalization.rejected.extend(domains.rejected)
     if normalization.rejected:
         for raw, reason in normalization.rejected:
             log.warning("rejected input %r: %s", raw, reason)
