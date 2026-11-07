@@ -9,10 +9,12 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from osintrecon.core.account_evidence import Analysis, analyze as analyze_evidence, node_of
 from osintrecon.core.doctor import DoctorReport
 from osintrecon.core.engine import RunResult
 from osintrecon.core.entity_scoring import confidence_bucket
 from osintrecon.core.models import Finding, MatchStatus
+from osintrecon.core.source_names import SOURCE_NAMES, source_name  # noqa: F401 -- re-exported
 
 STATUS_STYLE = {
     MatchStatus.CONFIRMED: "bold green",
@@ -30,34 +32,6 @@ STATUS_LABEL = {
 
 
 # Human names for plugin slugs (the web UI uses the same ones).
-SOURCE_NAMES = {
-    "cert_transparency": "Certificate transparency", "rdap": "RDAP",
-    "abstractapi_phone": "AbstractAPI Phone", "anilist": "AniList", "bluesky": "Bluesky",
-    "chess_com": "Chess.com", "codeforces": "Codeforces", "codewars": "Codewars",
-    "crossref": "Crossref", "devto": "DEV", "discord": "Discord", "dockerhub": "Docker Hub",
-    "dork_links": "Search dorks", "emailrep": "EmailRep", "github": "GitHub",
-    "github_commit_email": "GitHub commit search", "github_name_search": "GitHub name search",
-    "gitlab": "GitLab", "gravatar": "Gravatar", "hackernews": "Hacker News",
-    "hibp": "Have I Been Pwned", "holehe": "holehe", "hunter_io": "Hunter.io",
-    "instagram_graph": "Instagram (official API)",
-    "keybase": "Keybase", "lichess": "Lichess", "mastodon_social": "Mastodon",
-    "minecraft": "Minecraft", "openalex": "OpenAlex", "orcid": "ORCID",
-    "pastebin_search": "Pastebin search", "phone_lookup": "Phone number parser",
-    "roblox": "Roblox", "scratch": "Scratch", "search_api": "Web search",
-    "speedrun_com": "Speedrun.com", "steam_api": "Steam", "telegram_api": "Telegram",
-    "twitch_api": "Twitch", "twitter_api": "X (Twitter)", "twitter_email": "X (Twitter) email check",
-    "wayback": "Wayback Machine", "wikipedia": "Wikipedia", "xposedornot": "XposedOrNot",
-    "youtube_api": "YouTube",
-}
-
-
-def source_name(source: str) -> str:
-    """'username_sites:GitHub' -> 'GitHub'; 'chess_com' -> 'Chess.com'."""
-    if source.startswith("username_sites:"):
-        return source.split(":", 1)[1]
-    return SOURCE_NAMES.get(source, source)
-
-
 def _problem_text(finding: Finding) -> str:
     """A source problem's message without the site name it starts with."""
     name = source_name(finding.source)
@@ -93,6 +67,7 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
         console.print("[yellow]No findings above the reporting threshold.[/yellow]")
 
     show_hop = any(f.hop > 0 for f in actionable)
+    evidence = analyze_evidence(result.findings)
 
     for category, items in sorted(by_category.items()):
         table = Table(title=f"[bold]{category}[/bold] [grey50]({len(items)})[/grey50]", title_justify="left",
@@ -109,7 +84,7 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
             style = STATUS_STYLE.get(f.status, "")
             row = [
                 f"[{style}]{STATUS_LABEL.get(f.status, f.status.value)}[/{style}]",
-                f"[bold]{source_name(f.source)}[/bold]",
+                f"[bold]{source_name(f.source)}[/bold]" + _tie_mark(evidence, f),
                 f.identifier.value,
             ]
             if show_hop:
@@ -145,6 +120,8 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
             title="[red]Rejected inputs[/red]", border_style="red",
         ))
 
+    render_evidence(result, console, evidence)
+
     if result.entities:
         multi = [e for e in result.entities if len(e.identifiers) > 1]
         if multi:
@@ -173,6 +150,63 @@ def render(result: RunResult, console: Console | None = None, show_uncertain: bo
 
     if summary:
         render_summary(result, console, show_uncertain)
+
+def _tie_mark(evidence: Analysis, f: Finding) -> str:
+    verdict = evidence.verdicts.get(node_of(f))
+    if verdict is None or not verdict.tied:
+        return ""
+    return f" [cyan]⇄{verdict.cluster + 1}[/cyan]"
+
+
+_STRENGTH_STYLE = {"strong": "green", "medium": "yellow", "weak": "grey62"}
+
+
+def render_evidence(result: RunResult, console: Console | None = None, evidence: Analysis | None = None) -> None:
+    """Which found accounts are tied together and by what (⇄N in the
+    tables marks group N), weaker hints, contradictions, and how telling
+    each username is."""
+    console = console or Console()
+    evidence = evidence or analyze_evidence(result.findings)
+    rarity = list(getattr(result, "username_rarity", None) or [])
+    if not (evidence.links or evidence.conflicts or rarity):
+        return
+    lines: list[str] = []
+    for r in rarity:
+        style = {"rare": "green", "moderate": "yellow", "common": "red"}.get(r["label"], "")
+        share = f", found on {r['hits']} of {r['checked']} sites" if r.get("checked") else ""
+        meaning = {"rare": "the same name elsewhere is more likely the same person",
+                   "moderate": "weigh matches on the evidence below",
+                   "common": "the same name elsewhere is often someone else"}.get(r["label"], "")
+        lines.append(f"[bold]{r['username']}[/bold]: [{style}]{r['label']}[/{style}] username "
+                     f"[grey50](~{round(r['bits'])} bits{share})[/grey50] -- {meaning}")
+    for i, members in enumerate(evidence.clusters, 1):
+        names = ", ".join(evidence.labels.get(n, n[0]) for n in members)
+        lines.append(f"[cyan]⇄{i}[/cyan] [bold]{names}[/bold]")
+        for link in evidence.cluster_links(i - 1):
+            style = _STRENGTH_STYLE[link.strength]
+            lines.append(f"     [{style}]{link.strength:6}[/{style}] {link.detail}")
+    if not evidence.clusters:
+        lines.append("[grey62]No found accounts are tied together by evidence: the shared name is all they "
+                     "have in common.[/grey62]")
+    hints = evidence.loose_links()
+    if hints:
+        lines.append("[bold]Weaker hints[/bold] [grey50](not enough on their own)[/grey50]")
+        for link in hints[:8]:
+            lines.append(f"     [{_STRENGTH_STYLE[link.strength]}]{link.strength:6}[/] {link.detail}")
+        if len(hints) > 8:
+            lines.append(f"     [grey50]...and {len(hints) - 8} more[/grey50]")
+    if evidence.conflicts:
+        lines.append("[bold red]Contradictions[/bold red] [grey50](likely different people behind the same name)[/grey50]")
+        # Contradictions inside a linked group first: those are the surprising ones.
+        tied_nodes = {n for members in evidence.clusters for n in members}
+        ordered = sorted(evidence.conflicts, key=lambda c: -((c.a in tied_nodes) + (c.b in tied_nodes)))
+        lines.extend(f"     {c.detail}" for c in ordered[:5])
+        if len(ordered) > 5:
+            lines.append(f"     [grey50]...and {len(ordered) - 5} more[/grey50]")
+    console.print(Panel("\n".join(lines), title="[bold cyan]Account evidence[/bold cyan]", title_align="left",
+                        border_style="cyan", subtitle="[grey50]what ties the found accounts together[/grey50]",
+                        subtitle_align="right"))
+
 
 def render_summary(result: RunResult, console: Console | None = None, show_uncertain: bool = True) -> None:
     """The closing summary: what was found, what couldn't answer, and what the run cost."""

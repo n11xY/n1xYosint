@@ -6,6 +6,7 @@ import html
 import json
 from pathlib import Path
 
+from osintrecon.core.account_evidence import analyze as analyze_evidence, to_dict as evidence_to_dict
 from osintrecon.core.engine import RunResult
 from osintrecon.core.entity_scoring import confidence_bucket
 from osintrecon.core.identity_graph import build_graph
@@ -48,6 +49,10 @@ def export_json(result: RunResult, path: str) -> None:
             for e in result.entities
         ],
         "rejected_inputs": [{"raw": raw, "reason": reason} for raw, reason in result.rejected_inputs],
+        "username_rarity": list(getattr(result, "username_rarity", None) or []),
+        # Derived from the findings above (core/account_evidence.py), kept
+        # for readers that don't run the engine.
+        "account_evidence": evidence_to_dict(analyze_evidence(result.findings)),
     }
     Path(path).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -160,6 +165,36 @@ def _safe_href(url) -> str:
     return "#"
 
 
+def _html_evidence(result: RunResult) -> list[str]:
+    """Which found accounts are tied together, by what, and the
+    contradictions (core/account_evidence.py), plus username rarity."""
+    analysis = analyze_evidence(result.findings)
+    rarity = list(getattr(result, "username_rarity", None) or [])
+    if not (analysis.links or analysis.conflicts or rarity):
+        return []
+    parts = ["<h2>Account evidence</h2>"]
+    for r in rarity:
+        share = f", found on {r['hits']} of {r['checked']} sites" if r.get("checked") else ""
+        parts.append(f"<p><strong>{_esc(r['username'])}</strong>: {_esc(r['label'])} username "
+                     f"(about {_esc(round(r['bits']))} bits{_esc(share)})</p>")
+    for i, members in enumerate(analysis.clusters, 1):
+        names = ", ".join(analysis.labels.get(n, n[0]) for n in members)
+        parts.append(f"<h3>Linked group {i}: {_esc(names)}</h3><ul>")
+        for link in analysis.cluster_links(i - 1):
+            parts.append(f"<li>{_esc(link.detail)} <em>({_esc(link.strength)})</em></li>")
+        parts.append("</ul>")
+    hints = analysis.loose_links()
+    if hints:
+        parts.append("<h3>Weaker hints</h3><ul>")
+        parts.extend(f"<li>{_esc(lk.detail)} <em>({_esc(lk.strength)})</em></li>" for lk in hints)
+        parts.append("</ul>")
+    if analysis.conflicts:
+        parts.append("<h3>Contradictions</h3><ul>")
+        parts.extend(f"<li>{_esc(c.detail)}</li>" for c in analysis.conflicts)
+        parts.append("</ul>")
+    return parts
+
+
 def export_html(result: RunResult, path: str) -> None:
     by_category: dict[str, list[Finding]] = {}
     for f in result.findings:
@@ -216,6 +251,8 @@ def export_html(result: RunResult, path: str) -> None:
                 parts.append("</ul>")
             parts.append(f"<p><strong>Sources:</strong> {_esc(sources_line)}</p>")
             parts.append("</div>")
+
+    parts.extend(_html_evidence(result))
 
     if result.rejected_inputs:
         parts.append("<h2>Rejected inputs</h2><ul>")

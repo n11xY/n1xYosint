@@ -66,7 +66,8 @@ _PLATFORM_ALIASES = {
     "mastodon_social": "mastodon", "steam_api": "steam", "twitch_api": "twitch",
     "twitter_api": "twitter", "youtube_api": "youtube", "wikipedia": "wikimedia",
 }
-EVIDENCE_KINDS = ("keybase_proof", "profile_link", "avatar_match")
+EVIDENCE_KINDS = ("keybase_proof", "profile_link", "gravatar_match", "same_website",
+                  "avatar_match", "same_bio", "same_name", "same_location")
 
 
 def platform_key(name: str) -> str:
@@ -96,50 +97,18 @@ class DatedAccount:
 def evidence_links(findings: Iterable[Finding]) -> list[tuple[tuple[str, str], tuple[str, str], str]]:
     """Every piece of evidence tying two found accounts together, as
     (account, account, kind) with accounts keyed (platform key, lowercased
-    identifier); each pair and kind once. Only accounts the search found
-    (confirmed or probable) take part: a profile linking to an account the
-    search didn't find links nothing."""
-    findings = list(findings)
-    found: dict[tuple[str, str], list[Finding]] = {}
-    for f in findings:
-        if f.status in COUNTED and f.source != "avatar_correlation":
-            found.setdefault((platform_key(f.source), f.identifier.value.lower()), []).append(f)
-    pairs: dict[tuple, None] = {}
-
-    def link(a, b, kind):
-        if a != b and a in found and b in found:
-            first, second = sorted((a, b))
-            pairs[(first, second, kind)] = None
-
-    by_avatar: dict[str, tuple[str, str]] = {}
-    for node, items in found.items():
-        for f in items:
-            meta = f.metadata or {}
-            for target in meta.get("linked_accounts") or []:
-                if isinstance(target, dict) and target.get("platform") and target.get("username"):
-                    link(node, (platform_key(str(target["platform"])), str(target["username"]).lower()),
-                         target.get("evidence") or "profile_link")
-            if meta.get("avatar_url"):
-                by_avatar.setdefault(meta["avatar_url"], node)
-    for f in findings:
-        if f.source == "avatar_correlation":
-            meta = f.metadata or {}
-            a, b = by_avatar.get(meta.get("avatar_url_a")), by_avatar.get(meta.get("avatar_url_b"))
-            # Same platform on both sides is a shared default picture, not
-            # one person (results saved before avatar_correlation knew).
-            if a and b and a[0] != b[0]:
-                link(a, b, "avatar_match")
-    return list(pairs)
+    identifier); each pair and kind once. Only pairs whose evidence is
+    strong enough to tie them (see core/account_evidence.py) -- a shared
+    display name alone, say, is a hint, not a tie."""
+    from osintrecon.core.account_evidence import analyze
+    return [(*sorted((link.a, link.b)), link.kind) for link in analyze(findings).tied_links()]
 
 
 def account_links(findings: Iterable[Finding]) -> dict[tuple[str, str], tuple[str, ...]]:
     """(platform key, lowercased identifier) -> the kinds of evidence tying
     that found account to at least one other found account."""
-    evidence: dict[tuple[str, str], set[str]] = {}
-    for a, b, kind in evidence_links(findings):
-        evidence.setdefault(a, set()).add(kind)
-        evidence.setdefault(b, set()).add(kind)
-    return {node: tuple(k for k in EVIDENCE_KINDS if k in kinds) for node, kinds in evidence.items()}
+    from osintrecon.core.account_evidence import analyze
+    return {node: verdict.kinds for node, verdict in analyze(findings).verdicts.items() if verdict.tied}
 
 
 def parse_date(value: Any, now: Optional[datetime] = None) -> Optional[datetime]:

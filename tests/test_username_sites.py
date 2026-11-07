@@ -318,3 +318,31 @@ def test_a_403_challenge_is_never_read_as_not_found():
     # unless the site itself answers a free name with that status
     forbids_missing = dict(status_site, not_found_status=403)
     assert _classify(challenge, forbids_missing, "someone") is LookupOutcome.NOT_FOUND
+
+
+class _ProfilePage:
+    """Answers the real name with a profile page, the decoy with a 404."""
+
+    def __init__(self, body):
+        self.body = body
+
+    async def get(self, source, url, headers=None, expected_statuses=None):
+        status = 404 if "nx1" in url else 200
+        return SimpleNamespace(status=status, text="" if status == 404 else self.body, error=None, cached=False,
+                               evidence_path=None, url=url, headers={"Content-Type": "text/html"},
+                               json=lambda: None)
+
+
+def test_a_found_profile_carries_what_its_page_says():
+    page = ('<script type="application/ld+json">{"@type":"Person","name":"Alice Liddell",'
+            '"url":"https://example.com/alice","sameAs":["https://twitter.com/liddell"]}</script>'
+            '<a rel="me" href="https://alice.example">site</a>')
+    plugin = UsernameSitesPlugin(config={}, http=_ProfilePage(page))
+    plugin.sites = [{"name": "Example", "url": "https://example.com/{}", "check": "status", "found_status": 200}]
+
+    [finding] = asyncio.run(plugin.run(Identifier(value="alice", type=IdentifierType.USERNAME)))
+
+    assert finding.metadata["name"] == "Alice Liddell"
+    assert finding.metadata["linked_accounts"][0]["platform"] == "twitter"
+    assert {(i.type.value, i.value) for i in finding.discovered_identifiers} == {
+        ("username", "liddell"), ("url", "https://alice.example")}

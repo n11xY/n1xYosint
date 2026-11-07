@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
+from osintrecon.core.account_evidence import analyze as analyze_evidence, gravatar_email_matches
 from osintrecon.core.avatar_correlation import find_avatar_matches
 from osintrecon.core.cache import ResponseCache
 from osintrecon.core.config import Config
@@ -21,8 +22,9 @@ from osintrecon.core.correlation import CorrelationEngine
 from osintrecon.core.entity_scoring import score_entities
 from osintrecon.core.http_client import AsyncHttpClient
 from osintrecon.core.logging_setup import get_logger
-from osintrecon.core.models import Entity, Finding, Identifier, IdentifierType, RunStats
+from osintrecon.core.models import Entity, Finding, Identifier, IdentifierType, MatchStatus, RunStats
 from osintrecon.core.normalize import is_valid_discovered_identifier
+from osintrecon.core.username_rarity import Rarity, assess as assess_username
 from osintrecon.core.progress import ProgressCallback, outcome_of, safe_emit
 from osintrecon.core.scoring import process as dedup_and_score
 from osintrecon.plugins.base import SourcePlugin
@@ -43,6 +45,8 @@ class RunResult:
     # Request counters for sources with their own request policy (e.g.
     # username_sites:Instagram) -- see AsyncHttpClient.metrics_snapshot().
     source_metrics: dict[str, dict] = field(default_factory=dict)
+    # How telling each searched username is (core/username_rarity.py).
+    username_rarity: list[dict] = field(default_factory=list)
 
 
 class Engine:
@@ -136,17 +140,44 @@ class Engine:
             # to fetch the images.
             all_findings.extend(await find_avatar_matches(all_findings, http))
 
+            # A found account whose photo is the Gravatar of a searched (or
+            # discovered) email: record the email on it, so correlation
+            # joins the account and the email.
+            for finding, email in gravatar_email_matches(all_findings):
+                ident = Identifier(value=email, type=IdentifierType.EMAIL)
+                if ident not in finding.discovered_identifiers:
+                    finding.discovered_identifiers.append(ident)
+
+            username_rarity = self._username_rarity(plugins, visited, all_findings)
+
             source_metrics = http.metrics_snapshot()
             cache.close()
 
         scored, duplicates_removed = dedup_and_score(all_findings)
-        entities = score_entities(CorrelationEngine().correlate(scored))
+        evidence = analyze_evidence(scored)
+        entities = score_entities(CorrelationEngine().correlate(scored), evidence=evidence,
+                                  rarity={r.username.lower(): r for r in username_rarity})
 
         self.stats.findings_total = len(scored)
         self.stats.duplicates_removed = duplicates_removed
         self.stats.end_time = self.stats.end_time or time.time()
 
-        return RunResult(findings=scored, entities=entities, stats=self.stats, source_metrics=source_metrics)
+        return RunResult(findings=scored, entities=entities, stats=self.stats, source_metrics=source_metrics,
+                         username_rarity=[r.to_dict() for r in username_rarity])
+
+    @staticmethod
+    def _username_rarity(plugins: list[SourcePlugin], visited: set[Identifier],
+                         findings: list[Finding]) -> list[Rarity]:
+        """How telling each searched username is (core/username_rarity.py),
+        with this run's hit rate on the site database."""
+        sites = next((p for p in plugins if p.name == "username_sites"), None)
+        out = []
+        for ident in sorted((i for i in visited if i.type is IdentifierType.USERNAME), key=lambda i: i.value):
+            checked = len(sites.planned_checks(ident)) if sites is not None else 0
+            hits = sum(1 for f in findings if f.identifier == ident and f.source.startswith("username_sites:")
+                       and f.status in (MatchStatus.CONFIRMED, MatchStatus.PROBABLE))
+            out.append(assess_username(ident.value, hits, checked))
+        return out
 
     @staticmethod
     def _collect_new_identifiers(

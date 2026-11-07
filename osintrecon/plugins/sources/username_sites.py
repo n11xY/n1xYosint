@@ -88,6 +88,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, ClassVar, Optional
 from urllib.parse import quote
 
+from osintrecon.core import platform_urls, profile_extract
 from osintrecon.core.http_client import SourcePolicy
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
@@ -252,6 +253,52 @@ class _Lookup:
     evidence_path: Optional[str] = None
     stale_reason: Optional[LookupOutcome] = None
     restriction: Optional[str] = None
+    # What the found page says about its owner (core/profile_extract.py).
+    profile: Optional[dict[str, Any]] = None
+
+
+def _profile_of(resp, site: dict, value: str, url: str) -> Optional[dict[str, Any]]:
+    """What the found page says about its owner, or None. Never fails the
+    lookup: a page it can't read just carries no profile."""
+    try:
+        headers = getattr(resp, "headers", None) or {}
+        content_type = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
+        profile = profile_extract.extract(
+            resp.text or "", getattr(resp, "url", "") or url, site["name"], value,
+            link_hub=bool(site.get("link_hub")), content_type=content_type,
+        )
+    except Exception as exc:  # noqa: BLE001 -- extraction is an extra
+        log.debug("profile extraction failed for %s: %s", site["name"], exc)
+        return None
+    return profile or None
+
+
+# How many leads one found profile may add to the next enrichment round:
+# a link hub can list dozens of links, and each discovered username is a
+# full scan at --depth 2.
+_MAX_DISCOVERED_USERNAMES = 3
+_MAX_DISCOVERED_URLS = 3
+
+
+def _discovered_from_profile(profile: dict[str, Any], identifier: Identifier) -> list[Identifier]:
+    out: list[Identifier] = []
+    usernames = {identifier.value.lower()}
+    for account in profile.get("linked_accounts") or []:
+        name = str(account.get("username") or "")
+        if name and name.lower() not in usernames and len(usernames) <= _MAX_DISCOVERED_USERNAMES:
+            usernames.add(name.lower())
+            out.append(Identifier(value=name, type=IdentifierType.USERNAME))
+    # Personal websites only: a link to another platform's profile is
+    # already a linked account above.
+    domains: set[str] = set()
+    for url in profile.get("links") or []:
+        if len(domains) >= _MAX_DISCOVERED_URLS or not platform_urls.personal_site(url):
+            continue
+        domain = platform_urls.site_key(url)
+        if domain not in domains:
+            domains.add(domain)
+            out.append(Identifier(value=url, type=IdentifierType.URL))
+    return out
 
 
 def _decoy_username() -> str:
@@ -563,13 +610,15 @@ class UsernameSitesPlugin(SourcePlugin):
         else:
             decoy_check = "disabled for this site"
 
+        profile = _profile_of(resp, site, value, url)
         expires_at = None
         # A failed decoy check means this site's signal can't be trusted
         # right now -- not something to keep.
         if cache is not None and status is not MatchStatus.UNCERTAIN:
             cache.put_result(
                 source_name, value,
-                {"outcome": outcome.value, "status": status.value, "http_status": resp.status, "decoy_check": decoy_check},
+                {"outcome": outcome.value, "status": status.value, "http_status": resp.status, "decoy_check": decoy_check,
+                 "profile": profile},
                 settings.cache_ttl, collected_at,  # type: ignore[arg-type]
             )
             expires_at = collected_at + settings.cache_ttl  # type: ignore[operator]
@@ -577,7 +626,7 @@ class UsernameSitesPlugin(SourcePlugin):
             outcome=outcome, freshness="cached" if getattr(resp, "cached", False) else "fresh",
             status=status, http_status=resp.status, collected_at=collected_at, expires_at=expires_at,
             decoy_check=decoy_check, final_url=getattr(resp, "url", "") or "",
-            evidence_path=getattr(resp, "evidence_path", None),
+            evidence_path=getattr(resp, "evidence_path", None), profile=profile,
         )
 
     async def _decoy_check(self, site: dict, source_name: str, decoy: str,
@@ -611,6 +660,7 @@ class UsernameSitesPlugin(SourcePlugin):
             expires_at=stored["expires_at"],
             decoy_check=payload.get("decoy_check"),
             request_sent=False,
+            profile=payload.get("profile") or None,
         )
 
     def _finding(self, site: dict, identifier: Identifier, url: str, lookup: _Lookup,
@@ -664,6 +714,12 @@ class UsernameSitesPlugin(SourcePlugin):
         metadata["verification"] = (
             "verified" if status in (MatchStatus.CONFIRMED, MatchStatus.PROBABLE) else "unverified"
         )
+        discovered: list[Identifier] = []
+        if lookup.profile:
+            # name, bio, location, avatar_url, links, linked_accounts: the
+            # keys the dedicated plugins use, so correlation reads them alike.
+            metadata.update(lookup.profile)
+            discovered = _discovered_from_profile(lookup.profile, identifier)
         if site.get("mirror_of"):
             # Where the answer came from stays on record even when the entry
             # is trusted enough to show as the platform itself.
@@ -678,6 +734,7 @@ class UsernameSitesPlugin(SourcePlugin):
             title=title,
             category=site.get("category", self.category),
             metadata=metadata,
+            discovered_identifiers=discovered,
             evidence_path=lookup.evidence_path,
         )
 
