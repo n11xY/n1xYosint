@@ -825,7 +825,11 @@ def test_the_shipped_instagram_entry_checks_through_dumpor_and_confirms():
     assert len(entries) == 1
     (instagram,) = entries
     assert instagram["url"].startswith("https://dumpor.io/")
-    assert instagram["found_only"] is True and instagram["confirmed"] is True
+    assert instagram["confirmed"] is True
+    # Viewers show only accounts they have cached: an unanswered check is a
+    # "couldn't tell" row linking to the viewer, not silence.
+    assert "found_only" not in instagram and instagram["unanswered"] == "not_cached"
+    assert [f["url"].split("/")[2] for f in instagram["fallbacks"]] == ["insta-stories-viewer.com", "storynavigation.com"]
     assert instagram["profile_url"] == "https://www.instagram.com/{}/"
     assert DEFAULT_CONFIG["sources"]["username_sites"]["site_settings"]["Instagram"]["max_concurrency"] == 1
 

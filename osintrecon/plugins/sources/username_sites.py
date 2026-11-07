@@ -849,6 +849,15 @@ class UsernameSitesPlugin(SourcePlugin):
             metadata["http_status"] = lookup.http_status
             if lookup.http_status in _INCONCLUSIVE_STATUSES:
                 title = f"{site_name}: temporarily unavailable (HTTP {lookup.http_status})"
+            elif site.get("unanswered") == "not_cached" and lookup.outcome is LookupOutcome.UNKNOWN:
+                # Viewer sites show only accounts they already have; opening
+                # the profile once in a browser makes them fetch it. The row
+                # links to the viewer page, so that's one click.
+                value = identifier.value.lower() if site.get("lowercase") else identifier.value
+                url = site["url"].format(quote(value, safe=""))
+                title = (f"{site_name}: couldn't tell -- the viewer sites don't have this account yet; "
+                         "open the link once, then search again")
+                metadata["blocked"] = "not_cached"
             else:
                 title = f"{site_name}: couldn't tell -- the site didn't serve a readable profile page"
                 metadata["blocked"] = "unreadable_page"
