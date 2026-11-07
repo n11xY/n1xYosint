@@ -329,6 +329,57 @@ New plugin:
   - *Backloggd*: a bot challenge for every request, from home and server.
     Removed.
 
+## Fourth batch: social media (2026-11-07)
+
+20 social platforms, each checked through the engine's own client and
+classifier (two public accounts found, two random names not found) and with
+curl from the production server (real account found, random name not found).
+Test accounts are platform accounts, founders or well-known public figures.
+
+| Platform | What it is | Endpoint | Notes |
+|---|---|---|---|
+| Gab | microblogging | `gab.com/api/v1/account_by_username/{}` | Mastodon-style API; links to `gab.com/{}` |
+| Gettr | microblogging | `api.gettr.com/s/uinf/{}` | `"rc":"OK"` / `"rc":"ERR"`; lowercase names |
+| Primal | Nostr client | `primal.net/.well-known/nostr.json?name={}` | NIP-05 name registry; links to `primal.net/{}` |
+| Pillowfort | blogging community | `pillowfort.social/{}` | |
+| Myspace | social network | `myspace.com/{}/` | |
+| Clubhouse | audio social | `clubhouse.com/@{}` | |
+| Habbo | virtual world | `habbo.com/api/public/users?name={}` | official public API (habbo.com hotel) |
+| MeWe | social network | `mewe.com/i/{}` | an unknown name redirects to `mewe.com/404` |
+| ShareChat | social network (IN) | `sharechat.com/profile/{}` | 410 when absent |
+| Moj | short video (IN) | `mojapp.in/@{}` | an unknown name redirects to `mojapp.in/404` |
+| Glass | photography community | `glass.photo/{}` | |
+| Vero | social network | `vero.co/{}` | |
+| pixiv | art community (JP) | `pixiv.me/{}` | custom profile names; numeric-only accounts aren't reachable this way |
+| Douban | social network (CN) | `douban.com/people/{}/` | custom profile names |
+| Rutube | video (RU) | `rutube.ru/u/{}/` | channel aliases |
+| XING | professional network (DE) | `xing.com/profile/{}` | `First_Last` profile names |
+| komoot | outdoor community | `komoot.com/user/{}` | |
+| Hey | Lens Protocol client | `hey.xyz/u/{}` | |
+| Medium | blogging | `medium.com/feed/@{}` | back: the profile page is behind bot protection, the RSS feed isn't; links to `medium.com/@{}` |
+| Letterboxd | film diary | `letterboxd.com/{}/rss/` | back, the same way: RSS feed instead of the blocked profile page |
+
+Turned down in this batch:
+- *Bot protection* (Cloudflare or similar, for real and unknown names alike):
+  Truth Social, Cara, Hive, Lomography, Anime-Planet, ModDB, Challonge,
+  We Heart It, Dcard, MuseScore, MyFitnessPal, Inkitt, Quora, Peing,
+  Mirror, Pinkbike, AllTrails, Throne, Zhihu, Smule, Reddit (still), and
+  Tumblr's RSS feed (an unknown name gets a browser check).
+- *Same page for real and unknown names* (client-rendered or sign-in):
+  Spoutible, Skeb, BitChute, Threads, Facebook, Kwai, Josh, Triller, Likee,
+  Lemon8, Polarsteps, Vivino, Badoo, Hi5, Tagged, StarMaker, Taringa (closed),
+  Yappy, Mix, fedia.io.
+- *Timeouts in the engine's client* (curl answers, the async client never
+  gets the page): LiveJournal, Dreamwidth.
+- *Dead or not answering*: Kik's user API, FACEIT's nickname API, Koo
+  (closed), Periscope (closed), YouNow, Ask.fm, Trovo, 500px, Bigo.
+- *Duplicates*: Warpcast (Farcaster is in), Paragraph (already in), Lemmy.world,
+  Pawoo, mstdn.social, mastodon.world (instances of platforms already
+  covered), Iris and Snort (other Nostr name registries; Primal is the
+  largest).
+- *Not checkable by name*: Strava (a name resolves to another athlete),
+  Weibo, Bilibili, Xiaohongshu, Douyin (numeric IDs or sign-in only).
+
 ## Third batch (2026-11-06)
 
 113 sites, each checked end to end through the engine's own client and
