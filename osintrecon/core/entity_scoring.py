@@ -69,7 +69,46 @@ def _shared_metadata_reasons(findings: list) -> tuple[float, list[str]]:
     return score, reasons
 
 
-def score_entity(entity: Entity) -> None:
+def _evidence_reasons(entity: Entity, evidence, rarity) -> tuple[float, list[str]]:
+    """Account-level evidence (core/account_evidence.py) and username
+    rarity (core/username_rarity.py) as score and reasons."""
+    from osintrecon.core.account_evidence import node_of
+
+    score = 0.0
+    reasons: list[str] = []
+    nodes = {node_of(f) for f in entity.findings if f.status in (MatchStatus.CONFIRMED, MatchStatus.PROBABLE)}
+    if evidence is not None and nodes:
+        tied_links = [lk for lk in evidence.tied_links() if lk.a in nodes and lk.b in nodes]
+        strong = [lk for lk in tied_links if lk.strength == "strong"]
+        if tied_links:
+            tied_nodes = {n for lk in tied_links for n in (lk.a, lk.b)}
+            score += min(0.3, 0.05 * len(tied_nodes)) + (0.1 if strong else 0.0)
+            reasons.append(f"{len(tied_nodes)} of {len(nodes)} found accounts are tied together by evidence")
+            for lk in tied_links[:4]:
+                reasons.append(lk.detail)
+        conflicts = [c for c in evidence.conflicts if c.a in nodes and c.b in nodes]
+        if conflicts:
+            score -= min(0.2, 0.1 * len(conflicts))
+            for c in conflicts[:2]:
+                reasons.append(f"Contradiction: {c.detail}")
+    if rarity:
+        for ident in sorted(entity.identifiers, key=lambda i: i.value):
+            r = rarity.get(ident.value.lower()) if ident.type.value == "username" else None
+            if r is None:
+                continue
+            if r.label == "rare":
+                score += 0.1
+                reasons.append(f"Username '{r.username}' looks distinctive (about {r.bits:.0f} bits): "
+                               "the same name elsewhere is more likely the same person")
+            elif r.label == "common":
+                score -= 0.1
+                share = f", taken on {r.hits} of {r.checked} sites checked" if r.checked else ""
+                reasons.append(f"Username '{r.username}' is common (about {r.bits:.0f} bits{share}): "
+                               "the same name elsewhere is often someone else")
+    return score, reasons
+
+
+def score_entity(entity: Entity, evidence=None, rarity=None) -> None:
     """Sets entity.confidence and entity.reasons in place."""
     if len(entity.identifiers) < 2:
         return  # a lone seed identifier, not a cross-source match -- nothing to resolve
@@ -105,11 +144,15 @@ def score_entity(entity: Entity) -> None:
         score += 0.2
         reasons.append("Profile photo closely matches another linked account")
 
-    entity.confidence = min(MAX_CONFIDENCE, round(score, 3))
+    extra_score, extra_reasons = _evidence_reasons(entity, evidence, rarity)
+    score += extra_score
+    reasons.extend(extra_reasons)
+
+    entity.confidence = max(0.0, min(MAX_CONFIDENCE, round(score, 3)))
     entity.reasons = reasons
 
 
-def score_entities(entities: list[Entity]) -> list[Entity]:
+def score_entities(entities: list[Entity], evidence=None, rarity=None) -> list[Entity]:
     for entity in entities:
-        score_entity(entity)
+        score_entity(entity, evidence=evidence, rarity=rarity)
     return entities

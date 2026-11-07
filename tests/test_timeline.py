@@ -79,9 +79,10 @@ def test_accounts_are_linked_only_by_evidence_never_by_the_name_alone():
 
     by_source = {d.source: d for d in account_dates(findings, NOW)}
 
-    assert by_source["github"].evidence == ("keybase_proof", "avatar_match")
+    assert by_source["github"].evidence == ("keybase_proof",)
     assert by_source["keybase"].evidence == ("keybase_proof",)
-    assert by_source["devto"].evidence == ("avatar_match",)
+    # A photo alone is medium evidence: a hint, not enough to tie two accounts.
+    assert by_source["devto"].linked is False
     assert by_source["chess_com"].linked is False
     assert by_source["lichess"].linked is False  # its link points at an account the search didn't find
 
