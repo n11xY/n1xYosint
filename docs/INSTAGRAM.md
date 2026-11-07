@@ -166,7 +166,9 @@ count, so a real account with no followers and no posts is "couldn't tell",
 not found. Both pages share the Instagram request policy, and a fallback is
 asked only after an unanswered page, never to second-guess a "not found".
 
-Coverage is therefore the union of what the two viewers have cached. A small
+A second fallback, `storynavigation.com/user/{}`, embeds the profile's JSON (`user-found-prop="1"` with the username) for accounts it has; for others it leaves the lookup to the browser (`need-to-parse-user-info-prop="1"`), read as "couldn't tell". Checked 2026-11-07 from home and the server: zuck and ruzgar_y0 found, a random name not.
+
+About 50 viewer sites were tried; every one that answers a plain request serves only accounts it already has, and fetches new ones only inside a browser behind a check (proof of work, captcha) or sits behind Cloudflare. Coverage is therefore the union of what the three viewers have cached. A small
 account nobody has looked at recently can still come back "couldn't tell";
 the official Graph API module below covers business and creator accounts.
 
