@@ -145,6 +145,31 @@ check and now governs the viewer.
 **`wayback`** (unchanged): Internet Archive captures of `instagram.com/<name>/`.
 These are third-party historical observations, always reported as uncertain.
 
+## Dumpor change and the fallback viewer (2026-11-07)
+
+Since 2026-11-07 Dumpor puts a profile into the page only when it already
+has it cached (an account someone viewed recently, or a large one). For any
+other account the page is an empty "loading" skeleton, identical to a name
+that doesn't exist, and the profile is fetched afterwards inside the browser,
+behind a proof-of-work bot check. n1xYosint doesn't run that check, so an
+uncached account reads as "couldn't tell" there (never as absent). Seen
+live: `bluvsth` was a skeleton until it had been looked at in a browser,
+then came back with its avatar.
+
+So the Instagram entry now has a **fallback** (`"fallbacks"` in
+`config/sites.json`): when Dumpor's page says nothing either way,
+`insta-stories-viewer.com/{}/` is asked. Its page states the follower and
+post counts for accounts it has (checked: zuck 17.3M, github 951K, nasa
+104.4M; from home and from the production server); an unknown name shows
+zeros. The entry's `found_pattern` requires a non-zero follower or post
+count, so a real account with no followers and no posts is "couldn't tell",
+not found. Both pages share the Instagram request policy, and a fallback is
+asked only after an unanswered page, never to second-guess a "not found".
+
+Coverage is therefore the union of what the two viewers have cached. A small
+account nobody has looked at recently can still come back "couldn't tell";
+the official Graph API module below covers business and creator accounts.
+
 ## Configuring
 
 The `username_sites` Instagram defaults are built in (`osintrecon/core/config.py`).

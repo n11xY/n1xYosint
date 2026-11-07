@@ -255,6 +255,8 @@ class _Lookup:
     restriction: Optional[str] = None
     # What the found page says about its owner (core/profile_extract.py).
     profile: Optional[dict[str, Any]] = None
+    # The URL that answered, when a fallback did rather than the entry's own.
+    checked_url: str = ""
 
 
 def _profile_of(resp, site: dict, value: str, url: str) -> Optional[dict[str, Any]]:
@@ -301,6 +303,20 @@ def _discovered_from_profile(profile: dict[str, Any], identifier: Identifier) ->
     return out
 
 
+# A fallback page is asked only when the entry's own page gave no answer
+# either way (or didn't load): never to second-guess a "not found", and not
+# while the source is cooling down or blocked.
+_FALLBACK_ON = (LookupOutcome.UNKNOWN, LookupOutcome.NETWORK_ERROR)
+
+# Why a profile seen before couldn't be re-checked, in words.
+_STALE_REASON = {
+    LookupOutcome.UNKNOWN: "the page didn't show the profile either way",
+    LookupOutcome.NETWORK_ERROR: "the request failed",
+    LookupOutcome.RATE_LIMITED: "rate limited",
+    LookupOutcome.ACCESS_RESTRICTED: "access restricted",
+}
+
+
 def _decoy_username() -> str:
     # Short enough to fit under most platforms' own username length caps
     # (some sites in config/sites.json cap around 15 characters), clearly
@@ -329,17 +345,30 @@ def _profile_markers(site: dict, username: str) -> list[str]:
     return [marker.replace("{}", username) for marker in markers]
 
 
+def _strict(site: dict) -> bool:
+    """Whether the entry names what a real profile page must contain
+    ("found_text" literals, "found_pattern" regex): the strict rules."""
+    return bool(site.get("found_text") or site.get("found_pattern"))
+
+
 def _has_profile_markers(resp, site: dict, username: str) -> bool:
     if resp.status >= 400:
         return False
     markers = _profile_markers(site, username)
-    if not markers:
+    pattern = site.get("found_pattern")
+    if not markers and not pattern:
         return False
     text = resp.text or ""
     # Also matched against the entity-decoded page: sites write parts of a
     # title as HTML entities (Instagram has used "&#064;" for "@").
     decoded = html.unescape(text)
-    return all(marker in text or marker in decoded for marker in markers)
+    if not all(marker in text or marker in decoded for marker in markers):
+        return False
+    if pattern:
+        # "{}" stands for the username, as in found_text.
+        compiled = pattern.replace("{}", re.escape(username))
+        return bool(re.search(compiled, text) or re.search(compiled, decoded))
+    return True
 
 
 def _redirected_to_not_found(resp, site: dict) -> bool:
@@ -362,7 +391,7 @@ def _is_found(resp, site: dict, username: str = "") -> bool:
     check_type = site.get("check", "status")
     if check_type == "status":
         return resp.status == site.get("found_status", 200)
-    if site.get("found_text"):
+    if _strict(site):
         return _has_profile_markers(resp, site, username)
     not_found_text = site.get("not_found_text", "")
     return resp.status < 400 and bool(not_found_text) and not_found_text not in resp.text
@@ -405,7 +434,7 @@ def _classify(resp, site: dict, username: str) -> LookupOutcome:
         # Before any page check: the page at the sign-up URL may itself be a
         # bot challenge, but the redirect alone already answered.
         return LookupOutcome.NOT_FOUND
-    if site.get("found_text") and _has_profile_markers(resp, site, username):
+    if _strict(site) and _has_profile_markers(resp, site, username):
         # The strict markers include the username itself, so they win over
         # any restriction text that page code might also happen to contain.
         return LookupOutcome.PROFILE_FOUND
@@ -414,7 +443,7 @@ def _classify(resp, site: dict, username: str) -> LookupOutcome:
         return LookupOutcome.RATE_LIMITED
     if restriction is not None:
         return LookupOutcome.ACCESS_RESTRICTED
-    if site.get("found_text"):
+    if _strict(site):
         if _has_not_found_signal(resp, site):
             return LookupOutcome.NOT_FOUND
         if resp.status in (401, 403):
@@ -552,6 +581,26 @@ class UsernameSitesPlugin(SourcePlugin):
 
     async def _lookup(self, site: dict, source_name: str, value: str, url: str,
                       settings: SiteSettings, decoy: str) -> _Lookup:
+        """The entry's own check, then -- only when that page said nothing
+        either way -- each of its "fallbacks" in turn: other pages for the
+        same platform (a second viewer for Instagram), each with its own URL
+        and markers, sharing the entry's request policy."""
+        lookup = await self._lookup_once(site, source_name, value, url, settings, decoy)
+        for fallback in site.get("fallbacks") or []:
+            reason = lookup.stale_reason if lookup.freshness == "stale" else lookup.outcome
+            if lookup.freshness not in ("unavailable", "stale") or reason not in _FALLBACK_ON:
+                break
+            fb_site = {key: val for key, val in site.items() if key != "fallbacks"}
+            fb_site.update(fallback)
+            fb_url = fb_site["url"].format(quote(value, safe=""))
+            answer = await self._lookup_once(fb_site, source_name, value, fb_url, settings, decoy)
+            if answer.freshness not in ("unavailable", "stale"):
+                answer.checked_url = fb_url
+                return answer
+        return lookup
+
+    async def _lookup_once(self, site: dict, source_name: str, value: str, url: str,
+                           settings: SiteSettings, decoy: str) -> _Lookup:
         # A small, randomized pause before firing -- so the (up to
         # rate_limit_per_source) concurrent checks against one site don't
         # all leave at the exact same instant, which on its own is a fairly
@@ -683,6 +732,8 @@ class UsernameSitesPlugin(SourcePlugin):
             "freshness": lookup.freshness,
             "collected_at": _iso(lookup.collected_at),
         }
+        if lookup.checked_url:
+            url = lookup.checked_url
         if shown_url != url:
             metadata["checked_url"] = url
         if lookup.expires_at:
@@ -702,7 +753,7 @@ class UsernameSitesPlugin(SourcePlugin):
             status = MatchStatus.UNCERTAIN
             title = (
                 f"{site_name}: profile seen on {(_iso(lookup.collected_at) or '')[:10]} for '{identifier.value}' "
-                f"(stale -- can't be re-checked right now: {reason.value.replace('_', ' ')})"
+                f"(stale -- can't be re-checked right now: {_STALE_REASON.get(reason, reason.value.replace('_', ' '))})"
             )
             metadata["unavailable_reason"] = reason.value
         elif status is MatchStatus.UNCERTAIN:
