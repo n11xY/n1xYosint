@@ -167,7 +167,8 @@ def render_evidence(result: RunResult, console: Console | None = None, evidence:
     each username is."""
     console = console or Console()
     evidence = evidence or analyze_evidence(result.findings)
-    rarity = list(getattr(result, "username_rarity", None) or [])
+    # A name found nowhere has no matches to weigh.
+    rarity = [r for r in getattr(result, "username_rarity", None) or [] if r.get("hits") or not r.get("checked")]
     if not (evidence.links or evidence.conflicts or rarity):
         return
     lines: list[str] = []
