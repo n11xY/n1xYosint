@@ -346,3 +346,41 @@ def test_a_found_profile_carries_what_its_page_says():
     assert finding.metadata["linked_accounts"][0]["platform"] == "twitter"
     assert {(i.type.value, i.value) for i in finding.discovered_identifiers} == {
         ("username", "liddell"), ("url", "https://alice.example")}
+
+
+class _TwoViewers:
+    """The first viewer shows an empty shell for everyone; the second shows
+    real numbers for the real account only."""
+
+    def __init__(self):
+        self.urls = []
+
+    async def get(self, source, url, headers=None, expected_statuses=None):
+        self.urls.append(url)
+        if "first.example" in url:
+            text = "<div class='skeleton'>loading</div>"
+        elif "/alice/" in url:
+            text = '<span class="stats-followers">12K</span>'
+        else:
+            text = '<span class="stats-followers">0</span>'
+        return SimpleNamespace(status=200, text=text, error=None, cached=False, evidence_path=None,
+                               url=url, headers={}, json=lambda: None)
+
+
+def test_a_fallback_viewer_answers_when_the_first_page_says_nothing():
+    http = _TwoViewers()
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [{
+        "name": "Example", "url": "https://first.example/{}", "check": "message",
+        "found_text": ['alt="{} avatar"'], "found_only": True, "confirmed": True,
+        "fallbacks": [{"url": "https://second.example/{}/", "found_text": [],
+                       "found_pattern": r'stats-followers">\s*[1-9]'}],
+    }]
+
+    [finding] = asyncio.run(plugin.run(Identifier(value="alice", type=IdentifierType.USERNAME)))
+    assert finding.status == MatchStatus.CONFIRMED
+    assert finding.metadata["checked_url"] == "https://second.example/alice/"
+
+    # Neither page shows a random name: no finding, never "not found" read from a shell.
+    assert asyncio.run(plugin.run(Identifier(value="nobody123", type=IdentifierType.USERNAME))) == []
+    assert any("second.example/nobody123/" in u for u in http.urls)
