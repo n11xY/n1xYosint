@@ -306,3 +306,40 @@ def test_text_is_decoded_with_the_declared_charset():
             await runner.cleanup()
 
     assert asyncio.run(scenario()).text == "café"
+
+
+def test_uvloop_lost_socket_is_retried_like_a_network_error():
+    # uvloop can lose track of a socket aiohttp hands it and fail the
+    # connect with this RuntimeError; a fresh attempt works.
+    async def ok(request):
+        return web.Response(text="ok")
+
+    async def scenario():
+        runner, base, hits = await _serve_routes({"/x": ok})
+        try:
+            async with AsyncHttpClient(retries=1, retry_backoff=0) as http:
+                real = http._session.request
+                calls = {"n": 0}
+
+                def flaky(*args, **kwargs):
+                    calls["n"] += 1
+                    if calls["n"] == 1:
+                        raise RuntimeError("Multiple exceptions: File descriptor 413 is used by transport "
+                                           "<TCPTransport closed=False reading=True 0x15e98b80>")
+                    return real(*args, **kwargs)
+
+                http._session.request = flaky
+                resp = await http.get("site", f"{base}/x")
+
+                def broken(*args, **kwargs):
+                    raise RuntimeError("something else entirely")
+
+                http._session.request = broken
+                with pytest.raises(RuntimeError):
+                    await http.get("site", f"{base}/y")
+                return resp, calls["n"]
+        finally:
+            await runner.cleanup()
+
+    resp, calls = asyncio.run(scenario())
+    assert resp.status == 200 and calls == 2

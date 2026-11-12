@@ -48,7 +48,7 @@ sources:
         enabled: true
         max_concurrency: 1            # Instagram requests in flight at once
         request_timeout: 15           # seconds
-        minimum_request_interval: 5   # seconds between request starts, across runs
+        minimum_request_interval: 2   # seconds between request starts, across runs (per viewer)
         cooldown_duration: 900        # pause after a 429 or login wall without Retry-After;
         max_cooldown_duration: 21600  #   doubles per consecutive one, up to this (jittered)
         max_retry_attempts: 0         # retries within one lookup (a 429 is only retried

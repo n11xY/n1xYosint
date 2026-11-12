@@ -150,6 +150,14 @@ class SourcePolicy:
 _DEFAULT_POLICY = SourcePolicy(persist_state=False)
 
 
+def _lost_socket(exc: RuntimeError) -> bool:
+    """uvloop's "File descriptor N is used by transport ..." -- it lost track
+    of a socket aiohttp handed it (MagicStack/uvloop#645), so the connection
+    attempt failed. A fresh attempt gets a new socket: a network error, not
+    a crash. aiohappyeyeballs wraps several as "Multiple exceptions: ..."."""
+    return "is used by transport" in str(exc)
+
+
 @dataclass
 class SourceMetrics:
     """Counters for one source over one client's lifetime (one run)."""
@@ -701,13 +709,15 @@ class AsyncHttpClient:
 
                             response.evidence_path = await self._save_evidence(source, url, response)
                             return response
-                    except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as exc:
+                    except (aiohttp.ClientError, asyncio.TimeoutError, OSError, RuntimeError) as exc:
                         # OSError covers failures that don't come from aiohttp
                         # itself -- notably aiohttp_socks/python_socks proxy
                         # errors (e.g. the configured SOCKS proxy isn't actually
                         # running), which otherwise propagate uncaught and crash
                         # the calling plugin with a raw traceback instead of a
                         # clean, per-source error.
+                        if isinstance(exc, RuntimeError) and not _lost_socket(exc):
+                            raise
                         metrics.network_errors += 1
                         last_error = str(exc) or type(exc).__name__
                         log.debug("request failed (%s attempt %d/%d): %s", source, attempt + 1, max_retries + 1, exc)

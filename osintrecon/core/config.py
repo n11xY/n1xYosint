@@ -77,7 +77,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
                     "enabled": True,
                     "max_concurrency": 1,              # one Instagram request at a time
                     "request_timeout": 15,             # seconds
-                    "minimum_request_interval": 5,     # seconds between request starts, shared across runs
+                    "minimum_request_interval": 2,     # seconds between request starts, shared across runs;
+                                                       # each fallback viewer keeps its own spacing
                     "cooldown_duration": 900,          # after a 429/login wall with no Retry-After: 15 min,
                     "max_cooldown_duration": 21600,    # doubling per consecutive one, capped at 6h
                     "max_retry_attempts": 0,           # never re-ask within the same lookup
