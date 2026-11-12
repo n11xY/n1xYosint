@@ -81,12 +81,13 @@ import random
 import re
 import secrets
 import time
+import dataclasses
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Awaitable, Callable, ClassVar, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from osintrecon.core import platform_urls, profile_extract
 from osintrecon.core.http_client import SourcePolicy
@@ -306,7 +307,9 @@ def _discovered_from_profile(profile: dict[str, Any], identifier: Identifier) ->
 # A fallback page is asked only when the entry's own page gave no answer
 # either way (or didn't load): never to second-guess a "not found", and not
 # while the source is cooling down or blocked.
-_FALLBACK_ON = (LookupOutcome.UNKNOWN, LookupOutcome.NETWORK_ERROR)
+# A fallback is another site (a second viewer), with its own request queue
+# and cooldown, so one viewer being rate-limited is a reason to ask the next.
+_FALLBACK_ON = (LookupOutcome.UNKNOWN, LookupOutcome.NETWORK_ERROR, LookupOutcome.RATE_LIMITED)
 
 # Why a profile seen before couldn't be re-checked, in words.
 _STALE_REASON = {
@@ -484,6 +487,15 @@ class UsernameSitesPlugin(SourcePlugin):
             self.site_settings[site_name] = settings
             if settings.enabled and settings.policy is not None:
                 self.http.set_source_policy(self._source_name(site_name), settings.policy)
+                # Each fallback page lives on its own host: same caution,
+                # but its own queue, spacing and cooldown, so it doesn't wait
+                # behind the entry's main site (or the other fallbacks).
+                for site in self.sites:
+                    if site["name"] == site_name:
+                        for fallback in site.get("fallbacks") or []:
+                            self.http.set_source_policy(
+                                self._fallback_source(self._source_name(site_name), fallback["url"]),
+                                dataclasses.replace(settings.policy))
         # Lookups in flight, keyed by (source, normalized username): a second
         # identifier that normalizes to the same account joins the first
         # lookup -- request, decoy check and cache write included -- instead
@@ -492,6 +504,13 @@ class UsernameSitesPlugin(SourcePlugin):
 
     def _source_name(self, site_name: str) -> str:
         return f"{self.name}:{site_name}"
+
+    @staticmethod
+    def _fallback_source(source_name: str, url: str) -> str:
+        """The request-queue name for a fallback page: the entry's source
+        plus the fallback's host ("username_sites:Instagram@storynavigation.com").
+        Results are still cached and reported under the entry's own name."""
+        return f"{source_name}@{urlsplit(url).hostname or url}"
 
     def _count(self, source_name: str, counter: str) -> None:
         metrics = getattr(self.http, "source_metrics", None)
@@ -584,7 +603,7 @@ class UsernameSitesPlugin(SourcePlugin):
         """The entry's own check, then -- only when that page said nothing
         either way -- each of its "fallbacks" in turn: other pages for the
         same platform (a second viewer for Instagram), each with its own URL
-        and markers, sharing the entry's request policy."""
+        and markers, and its own request queue under the entry's policy."""
         lookup = await self._lookup_once(site, source_name, value, url, settings, decoy)
         for fallback in site.get("fallbacks") or []:
             reason = lookup.stale_reason if lookup.freshness == "stale" else lookup.outcome
@@ -593,14 +612,18 @@ class UsernameSitesPlugin(SourcePlugin):
             fb_site = {key: val for key, val in site.items() if key != "fallbacks"}
             fb_site.update(fallback)
             fb_url = fb_site["url"].format(quote(value, safe=""))
-            answer = await self._lookup_once(fb_site, source_name, value, fb_url, settings, decoy)
+            answer = await self._lookup_once(fb_site, source_name, value, fb_url, settings, decoy,
+                                             request_source=self._fallback_source(source_name, fallback["url"]))
             if answer.freshness not in ("unavailable", "stale"):
                 answer.checked_url = fb_url
                 return answer
         return lookup
 
     async def _lookup_once(self, site: dict, source_name: str, value: str, url: str,
-                           settings: SiteSettings, decoy: str) -> _Lookup:
+                           settings: SiteSettings, decoy: str, request_source: Optional[str] = None) -> _Lookup:
+        # source_name keys the result cache and the report; request_source
+        # is the queue the request waits in (a fallback's own host).
+        request_source = request_source or source_name
         # A small, randomized pause before firing -- so the (up to
         # rate_limit_per_source) concurrent checks against one site don't
         # all leave at the exact same instant, which on its own is a fairly
@@ -615,7 +638,8 @@ class UsernameSitesPlugin(SourcePlugin):
             return self._lookup_from_store(stored, "cached")
 
         get_kwargs = {"allow_cache": False} if settings.cache_ttl is not None else {}
-        resp = await self.http.get(source_name, url, headers=_headers_for(site), expected_statuses={404}, **get_kwargs)
+        resp = await self.http.get(request_source, url, headers=_headers_for(site), expected_statuses={404},
+                                   **get_kwargs)
         outcome = _classify(resp, site, value)
         collected_at = getattr(resp, "fetched_at", None) or time.time()
 
@@ -629,7 +653,7 @@ class UsernameSitesPlugin(SourcePlugin):
                 # later in this run (or the next one) gets the same, so back
                 # off as for a 429 (the client does that itself only for a
                 # real 429 status).
-                resp_cooldown = self.http.start_cooldown(source_name)
+                resp_cooldown = self.http.start_cooldown(request_source)
             if (stored is not None and stored["payload"].get("outcome") == LookupOutcome.PROFILE_FOUND.value
                     and time.time() <= stored["expires_at"] + settings.stale_ttl):
                 lookup = self._lookup_from_store(stored, "stale")
@@ -653,7 +677,7 @@ class UsernameSitesPlugin(SourcePlugin):
         status = (MatchStatus.CONFIRMED if site.get("check", "status") == "status" or site.get("confirmed")
                   else MatchStatus.PROBABLE)
         if settings.decoy_verification_enabled:
-            decoy_check, decoy_failed = await self._decoy_check(site, source_name, decoy, get_kwargs)
+            decoy_check, decoy_failed = await self._decoy_check(site, request_source, decoy, get_kwargs)
             if decoy_failed:
                 status = MatchStatus.UNCERTAIN
         else:

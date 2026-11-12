@@ -111,7 +111,9 @@ check and now governs the viewer.
   stored in the cache database, so it holds across searches, processes and
   web users. While paused, nothing is sent and the finding says
   "not checked -- paused until …".
-- **One request at a time**, at least 5 s apart across runs, with no retries
+- **One request at a time per viewer**, at least 2 s apart across runs; each
+  fallback viewer has its own queue, spacing and cooldown, and a viewer that
+  is rate-limited hands the lookup to the next one. No retries
   within a lookup. Identical lookups in flight share one request.
 - **Result cache.** "Found" is reused for 7 days and "not found" for 1 h.
   Restrictions are never cached as results. A found profile past its 7 days may

@@ -132,7 +132,7 @@ def test_instagram_has_its_own_conservative_provider_configuration():
     policy = parsed.policy
     assert policy.max_concurrency == 1
     assert policy.request_timeout == 15
-    assert policy.min_interval == 5
+    assert policy.min_interval == 2
     assert policy.max_retries == 0
     assert policy.cooldown == 900 and policy.max_cooldown == 21600
 

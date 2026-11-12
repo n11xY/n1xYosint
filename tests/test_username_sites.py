@@ -354,9 +354,11 @@ class _TwoViewers:
 
     def __init__(self):
         self.urls = []
+        self.sources = []
 
     async def get(self, source, url, headers=None, expected_statuses=None):
         self.urls.append(url)
+        self.sources.append(source)
         if "first.example" in url:
             text = "<div class='skeleton'>loading</div>"
         elif "/alice/" in url:
@@ -384,3 +386,21 @@ def test_a_fallback_viewer_answers_when_the_first_page_says_nothing():
     # Neither page shows a random name: no finding, never "not found" read from a shell.
     assert asyncio.run(plugin.run(Identifier(value="nobody123", type=IdentifierType.USERNAME))) == []
     assert any("second.example/nobody123/" in u for u in http.urls)
+
+
+def test_each_fallback_viewer_waits_in_its_own_queue():
+    # The second viewer is another site: its requests go out under its own
+    # source (own spacing and cooldown), not behind the first viewer's.
+    http = _TwoViewers()
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [{
+        "name": "Example", "url": "https://first.example/{}", "check": "message",
+        "found_text": ['alt="{} avatar"'], "found_only": True, "confirmed": True,
+        "fallbacks": [{"url": "https://second.example/{}/", "found_text": [],
+                       "found_pattern": r'stats-followers">\s*[1-9]'}],
+    }]
+    asyncio.run(plugin.run(Identifier(value="alice", type=IdentifierType.USERNAME)))
+    # The decoy check after a fallback answers goes to that same viewer, so
+    # it waits in the same queue.
+    assert http.sources == ["username_sites:Example", "username_sites:Example@second.example",
+                            "username_sites:Example@second.example"]
