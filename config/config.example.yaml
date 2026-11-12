@@ -53,7 +53,7 @@ sources:
         max_cooldown_duration: 21600  #   doubles per consecutive one, up to this (jittered)
         max_retry_attempts: 0         # retries within one lookup (a 429 is only retried
                                       #   when Retry-After asks for <= 10s)
-        cache_ttl: 86400              # reuse "profile found" for this long
+        cache_ttl: 604800             # reuse "profile found" for this long (a week)
         negative_cache_ttl: 3600      # reuse "not found" for this long
         stale_ttl: 604800             # show an older "found" as stale while Instagram is unavailable
         decoy_verification_enabled: false
@@ -88,7 +88,7 @@ sources:
     max_retry_attempts: 0
     cooldown_duration: 600        # pause after a 429 without Retry-After (Retry-After wins)
     max_cooldown_duration: 3600
-    cache_ttl: 86400              # reuse "taken" for a day
+    cache_ttl: 604800             # reuse "taken" for a week
     negative_cache_ttl: 21600     # reuse "available" for six hours
 
   gravatar:

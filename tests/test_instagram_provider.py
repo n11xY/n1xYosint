@@ -128,7 +128,7 @@ def test_instagram_has_its_own_conservative_provider_configuration():
     parsed = SiteSettings.from_config(raw)
     assert parsed.enabled is True
     assert parsed.decoy_verification_enabled is False
-    assert parsed.cache_ttl == 86400 and parsed.negative_cache_ttl == 3600
+    assert parsed.cache_ttl == 604800 and parsed.negative_cache_ttl == 3600
     policy = parsed.policy
     assert policy.max_concurrency == 1
     assert policy.request_timeout == 15
