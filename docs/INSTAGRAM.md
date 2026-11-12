@@ -113,8 +113,8 @@ check and now governs the viewer.
   "not checked -- paused until …".
 - **One request at a time**, at least 5 s apart across runs, with no retries
   within a lookup. Identical lookups in flight share one request.
-- **Result cache.** "Found" is reused for 24 h and "not found" for 1 h.
-  Restrictions are never cached as results. A found profile past its 24 h may
+- **Result cache.** "Found" is reused for 7 days and "not found" for 1 h.
+  Restrictions are never cached as results. A found profile past its 7 days may
   be shown for up to 7 more days as **PARTIAL** (stale, uncertain) while
   Instagram can't be asked.
 - **Uniform status** on every finding:

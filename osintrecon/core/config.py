@@ -57,7 +57,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "max_retry_attempts": 0,
             "cooldown_duration": 600,          # after a 429 without Retry-After
             "max_cooldown_duration": 3600,
-            "cache_ttl": 86400,                # "taken" reused for a day
+            "cache_ttl": 604800,               # "taken" reused for a week: a taken name rarely frees up
             "negative_cache_ttl": 21600,       # "available" reused for six hours
         },
         "username_sites": {
@@ -81,7 +81,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
                     "cooldown_duration": 900,          # after a 429/login wall with no Retry-After: 15 min,
                     "max_cooldown_duration": 21600,    # doubling per consecutive one, capped at 6h
                     "max_retry_attempts": 0,           # never re-ask within the same lookup
-                    "cache_ttl": 86400,                # "profile found" reused for 24h
+                    "cache_ttl": 604800,               # "profile found" reused for a week: accounts rarely
+                                                       # vanish, and every reuse is a request not sent
                     "negative_cache_ttl": 3600,        # "not found" reused for 1h
                     "stale_ttl": 604800,               # a found profile shown as stale for up to 7 more days
                                                        # while Instagram can't be re-checked
