@@ -69,7 +69,7 @@ what deduplication goes by; "API host" is where requests actually go.
 | `wayback` | archive.org | web.archive.org | url, username | no | `osintrecon/plugins/sources/wayback.py` |
 | `wikipedia` | wikipedia.org, wikimedia.org | en.wikipedia.org, meta.wikimedia.org | name, username | no | `osintrecon/plugins/sources/wikipedia.py` |
 | `xposedornot` | xposedornot.com | api.xposedornot.com | email | no | `osintrecon/plugins/sources/xposedornot.py` |
-| `youtube_api` | youtube.com | www.googleapis.com | username | yes | `osintrecon/plugins/sources/youtube_api.py` |
+| `youtube_api` | youtube.com | www.googleapis.com with a key; otherwise public Piped / Invidious instances (photo, banner, subscribers) | username | optional | `osintrecon/plugins/sources/youtube_api.py` |
 
 `holehe` bridges to the external holehe project, which checks email
 registration on 120+ sites itself; those sites aren't enumerated here and
