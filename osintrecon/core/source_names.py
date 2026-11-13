@@ -13,6 +13,7 @@ SOURCE_NAMES = {
     "hibp": "Have I Been Pwned", "holehe": "holehe", "hunter_io": "Hunter.io",
     "instagram_graph": "Instagram (official API)",
     "keybase": "Keybase", "lichess": "Lichess", "mastodon_social": "Mastodon",
+    "nexusmods": "Nexus Mods",
     "minecraft": "Minecraft", "openalex": "OpenAlex", "orcid": "ORCID",
     "pastebin_search": "Pastebin search", "phone_lookup": "Phone number parser",
     "roblox": "Roblox", "scratch": "Scratch", "search_api": "Web search",

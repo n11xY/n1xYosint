@@ -45,7 +45,7 @@ together silently, so you always know how much to trust a hit.
 
 ## Features
 
-- 266-site curated username enumeration database (10 of them adult sites, checked only with `--include-adult`) (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Twitch, and Steam
+- 266-site curated username enumeration database (10 of them adult sites, checked only with `--include-adult`) (each site individually live-verified against both a real and a nonexistent account at curation time, *and* cross-checked against a decoy at query time -- see below) plus dedicated API modules for GitHub, GitLab, Roblox, Minecraft, Bluesky, AniList, Nexus Mods, Twitch, and Steam
 - Email intelligence: breach exposure (XposedOrNot, free — HaveIBeenPwned, paid), paste exposure, deliverability verification (Hunter.io), reputation signal (EmailRep), Gravatar, and optional registration checks across 120+ sites via holehe
 - Phone number intelligence: offline validity/country/carrier/line-type parsing (no API key, no rate limit), plus reverse web search when `search_api` is configured
 - Name search across GitHub, Wikipedia, three academic APIs (ORCID, OpenAlex, Crossref), and a no-API LinkedIn/X manual-search-link generator — every API-backed one automatically retries with an ASCII-folded form (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u) when the exact name returns nothing, so diacritic names (Turkish and beyond) aren't silently missed

@@ -49,6 +49,7 @@ what deduplication goes by; "API host" is where requests actually go.
 | `hunter_io` | hunter.io | api.hunter.io | email | yes | `osintrecon/plugins/sources/hunter_io.py` |
 | `keybase` | keybase.io | keybase.io | username | no | `osintrecon/plugins/sources/keybase.py` |
 | `lichess` | lichess.org | lichess.org | username | no | `osintrecon/plugins/sources/lichess.py` |
+| `nexusmods` | nexusmods.com | api.nexusmods.com (GraphQL v2) | username | no | `osintrecon/plugins/sources/nexusmods.py` |
 | `mastodon_social` | mastodon.social | mastodon.social | username | no | `osintrecon/plugins/sources/mastodon_social.py` |
 | `minecraft` | minecraft.net | api.mojang.com | username | no | `osintrecon/plugins/sources/minecraft.py` |
 | `openalex` | openalex.org | api.openalex.org | name | no | `osintrecon/plugins/sources/openalex.py` |
@@ -93,7 +94,7 @@ checked by `osintrecon/plugins/sources/username_sites.py`. Rows marked
 | Instagram | instagram.com | `https://www.instagram.com/{}/` | message |  |
 | TikTok | tiktok.com | `https://www.tiktok.com/@{}` | message |  |
 | Pinterest | pinterest.com | `https://www.pinterest.com/{}/` | message |  |
-| Twitch | twitch.tv | `https://www.twitch.tv/{}` | message |  |
+| Twitch | twitch.tv | `https://decapi.me/twitch/id/{}` (Helix-backed; twitch.tv no longer serves small channels' pages to anonymous requests) | message |  |
 | SoundCloud | soundcloud.com | `https://soundcloud.com/{}` | status |  |
 | Vimeo | vimeo.com | `https://vimeo.com/{}` | status |  |
 | Steam | steamcommunity.com | `https://steamcommunity.com/id/{}` | message |  |
