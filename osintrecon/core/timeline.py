@@ -39,6 +39,7 @@ ACCOUNT_DATE_FIELDS: dict[str, tuple[str, str]] = {
     "keybase": ("joined", "account"),
     "lichess": ("created_at", "account"),
     "mastodon_social": ("created_at", "account"),
+    "nexusmods": ("joined", "account"),
     "scratch": ("joined", "account"),
     "speedrun_com": ("signup", "account"),
     "steam_api": ("account_created", "account"),
