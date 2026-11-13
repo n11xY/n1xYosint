@@ -77,8 +77,8 @@ counts -- is read from the page itself and can be filled in from where the
 site keeps it: "profile_api", a public, keyless profile endpoint asked only
 once the account is found (a Mastodon server's account lookup, Wattpad's
 user API, Steam's community XML), and "avatar_pattern" / "banner_pattern",
-a regex whose first group is the picture's URL ("{}" stands for the
-username), with "avatar_format" / "banner_format" to rebuild it (Pinterest's
+a regex whose first group is the picture's URL ("{username}" stands for
+the username), with "avatar_format" / "banner_format" to rebuild it (Pinterest's
 60px photo at 280px, Habbo's figure code as an image). Stock "no photo"
 pictures are never taken for the account's own.
 """
@@ -268,6 +268,38 @@ class _Lookup:
     profile: Optional[dict[str, Any]] = None
     # The URL that answered, when a fallback did rather than the entry's own.
     checked_url: str = ""
+
+
+def _object_around(text: str, anchor: str) -> str:
+    """The JSON object (as text) enclosing the first match of `anchor`, or
+    "" when there is none. Braces inside strings are skipped."""
+    m = re.search(anchor, text or "")
+    if not m:
+        return ""
+    depth, i, in_string = 0, m.start(), False
+    while i > 0:  # back to the opening brace
+        i -= 1
+        c = text[i]
+        if c == '"' and text[i - 1] != "\\":
+            in_string = not in_string
+        elif not in_string and c == "}":
+            depth += 1
+        elif not in_string and c == "{":
+            if depth == 0:
+                break
+            depth -= 1
+    start, depth, in_string = i, 0, False
+    for j in range(start, min(len(text), start + 200_000)):
+        c = text[j]
+        if c == '"' and text[j - 1] != "\\":
+            in_string = not in_string
+        elif not in_string and c == "{":
+            depth += 1
+        elif not in_string and c == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:j + 1]
+    return ""
 
 
 def _profile_of(resp, site: dict, value: str, url: str) -> Optional[dict[str, Any]]:
@@ -613,7 +645,8 @@ class UsernameSitesPlugin(SourcePlugin):
         ("avatar_pattern" / "banner_pattern", with "_format" to rebuild a
         URL). What the API says about the account wins over a page's
         guesses. Never fails the lookup."""
-        if not (site.get("profile_api") or site.get("avatar_pattern") or site.get("banner_pattern")):
+        if not (site.get("profile_api") or site.get("avatar_pattern") or site.get("banner_pattern")
+                or site.get("fact_patterns")):
             return profile
         profile = dict(profile or {})
         bodies = [resp.text or ""]
@@ -641,6 +674,25 @@ class UsernameSitesPlugin(SourcePlugin):
                     if picture:
                         profile[f"{kind}_url"] = picture
                         break
+            # Counts and the sign-up date from where the site keeps them
+            # ("fact_patterns": {"following_count": [regex, ...], "created_at":
+            # [...]}): the first pattern that matches, "{username}" the username.
+            # With "fact_scope" (a regex), only inside the JSON object around
+            # its first match -- the account's own object, not a board's.
+            scoped = bodies
+            if site.get("fact_scope"):
+                scoped = [obj for body in bodies for obj in (_object_around(body, site["fact_scope"]),) if obj]
+            for key, patterns in (site.get("fact_patterns") or {}).items():
+                found = next((m.group(1) for body in scoped for pattern in patterns
+                              for m in (re.search(pattern.replace("{username}", re.escape(value)), body, re.S),) if m),
+                             None)
+                if found is None:
+                    continue
+                if key.endswith("_count"):
+                    if found.isdigit():
+                        profile[key] = int(found)
+                else:
+                    profile[key] = found
         except Exception as exc:  # noqa: BLE001 -- the profile is an extra
             log.debug("profile details failed for %s: %s", site["name"], exc)
         return profile or None
