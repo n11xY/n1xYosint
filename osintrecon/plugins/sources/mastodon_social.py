@@ -77,6 +77,9 @@ class MastodonSocialPlugin(SourcePlugin):
                 "statuses_count": data.get("statuses_count"),
                 "bot": data.get("bot"),
                 "avatar_url": data.get("avatar"),
+                # the profile's header image; Mastodon serves a stock "missing.png"
+                # when none was set, which is not the account's
+                "banner_url": None if "missing" in (data.get("header") or "missing") else data.get("header"),
             },
             discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,

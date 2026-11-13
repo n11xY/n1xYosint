@@ -204,3 +204,26 @@ def test_username_rarity():
     assert assess("xX_ShadowKiller_Xx").label == "moderate"
     # taken on most sites: popular, whatever it looks like
     assert assess("qzxv", hits=150, checked=250).label == "common"
+
+
+def test_banners_come_only_from_keys_that_mean_this_accounts_cover():
+    from osintrecon.core.profile_extract import extract
+    api = extract('{"name": "A", "bannerImage": "https://cdn.example.com/b/1.jpg"}', "https://api.example.com/u/a",
+                  "Example", "a", content_type="application/json")
+    assert api["banner_url"] == "https://cdn.example.com/b/1.jpg"
+    page = ('<html><head><title>a</title></head><body><script>window.__DATA__={"user":{"coverPhoto":'
+            '"https:\/\/img.example.org\/covers\/a.jpg?w=1\u0026h=2"}}</script></body></html>')
+    assert extract(page, "https://example.org/a", "Example", "a")["banner_url"] == "https://img.example.org/covers/a.jpg?w=1&h=2"
+    yt = ('<script>var ytInitialData={"imageBannerViewModel":{"image":{"sources":['
+          '{"url":"https://yt3.googleusercontent.com/abc=w1060-fcrop64","width":1060},'
+          '{"url":"https://yt3.googleusercontent.com/abc=w2560-fcrop64","width":2560}]}}}</script>')
+    assert extract(yt, "https://www.youtube.com/@a", "YouTube", "a")["banner_url"].endswith("=w2560-fcrop64")
+    # A bare "banner" key is as often the site's own header: not taken.
+    site_own = '<script>{"banner":"https://example.org/static/site-banner.png"}</script>'
+    assert "banner_url" not in extract(site_own, "https://example.org/a", "Example", "a")
+
+
+def test_a_banner_key_holding_a_bare_link_is_not_a_picture():
+    from osintrecon.core.profile_extract import extract
+    page = '<script>{"profile_cover":"https:\/\/mango.plurk.com\/"}</script>'
+    assert "banner_url" not in extract(page, "https://www.plurk.com/a", "Plurk", "a")
