@@ -61,6 +61,9 @@ class BlueskyPlugin(SourcePlugin):
                 "follows_count": data.get("followsCount"),
                 "posts_count": data.get("postsCount"),
                 "created_at": data.get("createdAt"),
+                "avatar_url": data.get("avatar"),
+                # the profile's cover image, shown faded behind the result card's header
+                "banner_url": data.get("banner"),
             },
             evidence_path=resp.evidence_path,
         )]

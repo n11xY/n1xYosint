@@ -45,6 +45,7 @@ ACCOUNT_DATE_FIELDS: dict[str, tuple[str, str]] = {
     "steam_api": ("account_created", "account"),
     "twitch_api": ("created_at", "account"),
     "twitter_api": ("created_at", "account"),
+    "youtube_api": ("published_at", "account"),
     "wikipedia": ("created_at", "account"),
     # A verified OpenPGP key's creation date: when the key was made, which
     # is not an account sign-up -- shown as "key created".

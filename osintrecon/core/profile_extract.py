@@ -89,6 +89,19 @@ _AVATAR_KEYS = ("avatar_url", "avatarUrl", "avatar", "profile_image_url_https", 
                 "profile_image", "profile_pic_url", "profilePicUrl", "picture", "photo", "image", "ico",
                 "avatar_static", "icon_url")
 _LOCATION_KEYS = ("location", "city", "country", "hometown", "loc")
+# The profile's cover image. Only names that mean "this account's banner":
+# a bare "banner" or "cover" key on a page is as often the site's own.
+_BANNER_KEYS = ("banner_url", "bannerUrl", "bannerImage", "banner_image", "banner_img", "profile_banner_url",
+                "profileBanner", "header_static", "header_image", "headerImage", "cover_photo", "coverPhoto",
+                "cover_image_url", "coverImageUrl", "profile_cover", "visual_url")
+# In a page's embedded JSON (escaped slashes and all): one of those keys
+# and an image URL.
+_EMBEDDED_BANNER = re.compile(
+    r'"(?:' + "|".join(_BANNER_KEYS) + r')"\s*:\s*"(https?:(?:\\?/){2}[^"\s]{8,600})"')
+# YouTube keeps the channel banner in ytInitialData: the sources run from
+# small to large, so the last one is the full size.
+_YOUTUBE_BANNER = re.compile(r'"imageBannerViewModel":\{"image":\{"sources":\[(.*?)\]', re.S)
+_YOUTUBE_SOURCE = re.compile(r'"url":"(https://yt3\.googleusercontent\.com/[^"]+)"')
 _LINK_KEYS = ("website", "url", "blog", "homepage", "home_page", "site", "web", "links", "website_url",
               "external_url", "fields", "social", "socials", "social_links", "twitter_username")
 
@@ -197,6 +210,20 @@ def _unwrap(obj: Any) -> Any:
     return obj
 
 
+def _banner_in_page(body: str) -> Optional[str]:
+    """The account's cover image from a page's embedded JSON, if it names
+    one: YouTube's channel banner, or a key that only means a banner."""
+    yt = _YOUTUBE_BANNER.search(body)
+    if yt:
+        sources = _YOUTUBE_SOURCE.findall(yt.group(1))
+        if sources:
+            return sources[-1].replace("\\u0026", "&")
+    m = _EMBEDDED_BANNER.search(body)
+    if m:
+        return m.group(1).replace("\\/", "/").replace("\\u0026", "&")
+    return None
+
+
 def _from_json(data: Any) -> dict[str, Any]:
     obj = _unwrap(data)
     if not isinstance(obj, dict):
@@ -207,6 +234,7 @@ def _from_json(data: Any) -> dict[str, Any]:
         out["name"], out["name_source"] = _text(name, 80), "api"
     out["bio"] = _text(_first(obj, _BIO_KEYS))
     out["avatar_url"] = _image_url(_first(obj, _AVATAR_KEYS))
+    out["banner_url"] = _image_url(_first(obj, _BANNER_KEYS))
     out["location"] = _location(_first(obj, _LOCATION_KEYS))
     links: list[str] = []
     for key in _LINK_KEYS:
@@ -380,6 +408,9 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
             image = meta.get("og:image") or meta.get("twitter:image") or meta.get("twitter:image:src")
             if image and not _NOT_A_PHOTO.search(image):
                 profile["avatar_url"] = image
+        banner = _banner_in_page(body)
+        if banner:
+            profile["banner_url"] = banner
         profile = {k: v for k, v in profile.items() if v}
     if profile.get("name") and profile["name"].lstrip("@").strip().lower() == username.lower():
         # The username again, not a display name.
@@ -407,6 +438,16 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
     if links:
         profile["links"] = links
 
+    if profile.get("banner_url"):
+        banner = _absolute(profile["banner_url"], page_url)
+        # An image has a path to it; a bare host ("https://mango.plurk.com/")
+        # under a banner-ish key is a link, not a picture.
+        path = urlsplit(banner).path if banner else ""
+        if (banner and len(path.strip("/")) >= 3 and not _NOT_A_PHOTO.search(banner)
+                and banner != profile.get("avatar_url")):
+            profile["banner_url"] = banner
+        else:
+            profile.pop("banner_url")
     if profile.get("avatar_url"):
         profile["avatar_url"] = _absolute(profile["avatar_url"], page_url) or profile["avatar_url"]
         m = _GRAVATAR.search(profile["avatar_url"])

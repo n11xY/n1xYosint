@@ -1,6 +1,4 @@
 import asyncio
-import json
-from pathlib import Path
 from types import SimpleNamespace
 
 from osintrecon.core.models import Identifier, IdentifierType, MatchStatus
@@ -44,11 +42,3 @@ def test_no_such_user_is_no_finding_and_an_api_failure_is_an_error():
     [down] = _run(_Http(status=503, payload=None), "x")
     assert down.status is MatchStatus.ERROR
 
-
-def test_twitch_is_checked_through_the_helix_backed_lookup():
-    sites = json.loads(Path("config/sites.json").read_text(encoding="utf-8"))
-    sites = sites if isinstance(sites, list) else sites.get("sites", list(sites.values()))
-    [twitch] = [s for s in sites if s["name"] == "Twitch"]
-    assert twitch["url"].startswith("https://decapi.me/twitch/id/")
-    assert twitch["profile_url"] == "https://www.twitch.tv/{}"
-    assert twitch["found_pattern"] and twitch["not_found_text"] == "Invalid Twitch username"

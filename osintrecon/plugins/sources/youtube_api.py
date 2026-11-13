@@ -41,7 +41,8 @@ class YouTubeAPIPlugin(SourcePlugin):
 
     async def run(self, identifier: Identifier) -> list[Finding]:
         params = {
-            "part": "snippet,statistics",
+            # brandingSettings carries the channel banner; same quota cost
+            "part": "snippet,statistics,brandingSettings",
             "forHandle": identifier.value,
             "key": self.config["api_key"],
         }
@@ -76,6 +77,9 @@ class YouTubeAPIPlugin(SourcePlugin):
         channel = items[0]
         snippet = channel.get("snippet") or {}
         stats = channel.get("statistics") or {}
+        banner = ((channel.get("brandingSettings") or {}).get("image") or {}).get("bannerExternalUrl")
+        thumbs = snippet.get("thumbnails") or {}
+        avatar = next((thumbs[k].get("url") for k in ("high", "medium", "default") if isinstance(thumbs.get(k), dict)), None)
 
         return [Finding(
             source=self.name,
@@ -86,6 +90,10 @@ class YouTubeAPIPlugin(SourcePlugin):
             category=self.category,
             metadata={
                 "channel_id": channel.get("id"),
+                "display_name": snippet.get("title"),
+                "avatar_url": avatar,
+                # the banner URL comes without a size; =w1060 asks for a card-sized one
+                "banner_url": f"{banner}=w1060" if isinstance(banner, str) and banner.startswith("https://") else None,
                 "description": snippet.get("description"),
                 "published_at": snippet.get("publishedAt"),
                 "country": snippet.get("country"),

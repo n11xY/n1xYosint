@@ -21,6 +21,7 @@ query ($name: String) {
     about
     createdAt
     avatar { large }
+    bannerImage
     statistics { anime { count } manga { count } }
   }
 }
@@ -75,6 +76,7 @@ class AniListPlugin(SourcePlugin):
                 "anime_count": (stats.get("anime") or {}).get("count"),
                 "manga_count": (stats.get("manga") or {}).get("count"),
                 "avatar": (user.get("avatar") or {}).get("large"),
+                "banner_url": user.get("bannerImage"),
             },
             evidence_path=resp.evidence_path,
         )]

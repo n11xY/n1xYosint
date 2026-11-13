@@ -63,7 +63,7 @@ what deduplication goes by; "API host" is where requests actually go.
 | `speedrun_com` | speedrun.com | www.speedrun.com | username | no | `osintrecon/plugins/sources/speedrun_com.py` |
 | `steam_api` | steamcommunity.com | api.steampowered.com | username | yes | `osintrecon/plugins/sources/steam_api.py` |
 | `telegram_api` | t.me | api.telegram.org | username | yes | `osintrecon/plugins/sources/telegram_api.py` |
-| `twitch_api` | twitch.tv | id.twitch.tv, api.twitch.tv | username | yes | `osintrecon/plugins/sources/twitch_api.py` |
+| `twitch_api` | twitch.tv | api.twitch.tv with your own app; otherwise decapi.me (Helix-backed, keyless) | username | optional | `osintrecon/plugins/sources/twitch_api.py` |
 | `twitter_api` | x.com | api.twitter.com | username | yes | `osintrecon/plugins/sources/twitter_api.py` |
 | `twitter_email` | x.com | api.twitter.com | email | no | `osintrecon/plugins/sources/twitter_email.py` |
 | `wayback` | archive.org | web.archive.org | url, username | no | `osintrecon/plugins/sources/wayback.py` |
@@ -94,7 +94,6 @@ checked by `osintrecon/plugins/sources/username_sites.py`. Rows marked
 | Instagram | instagram.com | `https://www.instagram.com/{}/` | message |  |
 | TikTok | tiktok.com | `https://www.tiktok.com/@{}` | message |  |
 | Pinterest | pinterest.com | `https://www.pinterest.com/{}/` | message |  |
-| Twitch | twitch.tv | `https://decapi.me/twitch/id/{}` (Helix-backed; twitch.tv no longer serves small channels' pages to anonymous requests) | message |  |
 | SoundCloud | soundcloud.com | `https://soundcloud.com/{}` | status |  |
 | Vimeo | vimeo.com | `https://vimeo.com/{}` | status |  |
 | Steam | steamcommunity.com | `https://steamcommunity.com/id/{}` | message |  |
@@ -232,7 +231,7 @@ email), not duplicates.
 - **speedrun.com**: sites.json: Speedrun.com; plugin: speedrun_com
 - **steamcommunity.com**: sites.json: Steam; plugin: steam_api
 - **t.me**: sites.json: Telegram; plugin: telegram_api
-- **twitch.tv**: sites.json: Twitch; plugin: twitch_api
+- **twitch.tv**: plugin: twitch_api (twitch.tv no longer serves small channels' pages to anonymous requests, so there is no page check)
 - **x.com**: plugin: twitter_api; plugin: twitter_email
 - **ycombinator.com**: sites.json: HackerNews; plugin: hackernews
 - **youtube.com**: sites.json: YouTube; plugin: youtube_api
