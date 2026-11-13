@@ -92,7 +92,7 @@ checked by `osintrecon/plugins/sources/username_sites.py`. Rows marked
 | DevTo | dev.to | `https://dev.to/{}` | status |  |
 | Medium | medium.com | `https://medium.com/@{}` | message |  |
 | Instagram | instagram.com | `https://www.instagram.com/{}/` | message |  |
-| TikTok | tiktok.com | `https://www.tiktok.com/@{}` | message |  |
+| TikTok | tiktok.com | `https://www.tiktok.com/@{}` (page data: `uniqueId` found, `statusCode` 10221 missing; photo, counts and sign-up time from `userInfo`) | message |  |
 | Pinterest | pinterest.com | `https://www.pinterest.com/{}/` | message |  |
 | SoundCloud | soundcloud.com | `https://soundcloud.com/{}` | status |  |
 | Vimeo | vimeo.com | `https://vimeo.com/{}` | status |  |

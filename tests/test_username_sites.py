@@ -482,3 +482,20 @@ def test_a_zero_count_is_kept():
     got = extract('{"username": "a", "follower_count": 0}', "https://api.example/a", "Example", "a",
                   content_type="application/json")
     assert got["followers_count"] == 0
+
+
+def test_tiktok_reads_the_page_data_not_its_translation_strings():
+    import json
+    from pathlib import Path
+    sites = json.loads(Path("config/sites.json").read_text(encoding="utf-8"))
+    [tiktok] = [s for s in sites if s["name"] == "TikTok"]
+    # "Couldn't find this account" is on every TikTok page (its strings
+    # bundle), so it can't be the not-found sign.
+    assert "Couldn't find" not in tiktok["not_found_text"]
+    assert tiktok["found_text"] == ['"uniqueId":"{}"'] and tiktok["fact_scope"]
+
+
+def test_picture_urls_with_escaped_slashes_are_rebuilt():
+    from osintrecon.core.profile_extract import picture_from
+    page = '"avatarLarger":"https:\u002F\u002Fp16.tiktokcdn.com\u002Fa.jpeg?x=1\u0026y=2"'
+    assert picture_from(page, '"avatarLarger":"([^"]+)"', "a") == "https://p16.tiktokcdn.com/a.jpeg?x=1&y=2"

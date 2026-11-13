@@ -280,7 +280,8 @@ def picture_from(body: str, pattern: str, username: str, fmt: Optional[str] = No
         return None
     if not m:
         return None
-    url = m.group(1).replace("\\/", "/").replace("\\u0026", "&").replace("&amp;", "&").strip()
+    url = (m.group(1).replace("\\/", "/").replace("\\u002F", "/").replace("\\u002f", "/")
+           .replace("\\u0026", "&").replace("&amp;", "&").strip())
     if fmt:
         url = fmt.format(url)
     if url.startswith("//"):
