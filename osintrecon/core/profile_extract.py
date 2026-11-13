@@ -80,20 +80,45 @@ _HUB_JUNK_HOSTS = re.compile(r"(^|\.)(apple\.com|google\.com|play\.google\.com|o
 _HUB_JUNK_PATH = re.compile(r"(privacy|terms|cookie|legal|signup|sign-up|login|register|report|help)", re.I)
 
 _WRAPPER_KEYS = ("data", "user", "result", "account", "profile", "person", "channel", "author", "entry",
-                 "uinf", "response", "payload", "graphql")
+                 "uinf", "response", "payload", "graphql", "person_view", "them", "users", "results",
+                 "attributes")
 _NAME_KEYS = ("display_name", "displayName", "displayname", "display-name", "full_name", "fullName",
               "fullname", "nickname", "nick", "name", "realname", "real_name")
 _BIO_KEYS = ("bio", "note", "description", "about", "about_me", "aboutMe", "summary", "intro", "tagline",
              "headline", "signature", "status_text", "dsc")
 _AVATAR_KEYS = ("avatar_url", "avatarUrl", "avatar", "profile_image_url_https", "profile_image_url",
                 "profile_image", "profile_pic_url", "profilePicUrl", "picture", "photo", "image", "ico",
-                "avatar_static", "icon_url")
+                "avatar_static", "icon_url", "img_avatar", "avatar_720_url", "gravatar_url", "photo_url",
+                "pfp", "profile_picture", "images")
 _LOCATION_KEYS = ("location", "city", "country", "hometown", "loc")
 # The profile's cover image. Only names that mean "this account's banner":
 # a bare "banner" or "cover" key on a page is as often the site's own.
 _BANNER_KEYS = ("banner_url", "bannerUrl", "bannerImage", "banner_image", "banner_img", "profile_banner_url",
                 "profileBanner", "header_static", "header_image", "headerImage", "cover_photo", "coverPhoto",
                 "cover_image_url", "coverImageUrl", "profile_cover", "visual_url")
+# An API answer is about the account, so there plain names for its cover
+# image are safe too (Mastodon's "header", Wattpad's "backgroundUrl").
+_JSON_BANNER_KEYS = _BANNER_KEYS + ("header", "banner", "cover", "coverImage", "cover_image", "cover_url",
+                                    "coverUrl", "cover_photo_url", "backgroundUrl", "background_url",
+                                    "background_image", "header_media_item", "cover_photo")
+# What an API says about the account besides who it is: when it was made
+# and how many follow it. Stored under one name each, whatever the source
+# called them.
+_CREATED_KEYS = ("created_at", "createdAt", "created", "creationDate", "date_joined", "joined", "joined_at",
+                 "memberSince", "created_on", "createdOn", "createDate", "created_time", "time_created",
+                 "published", "registered")
+_COUNT_KEYS = {
+    "followers_count": ("followers_count", "followersCount", "follower_count", "followerCount", "numFollowers",
+                        "followers_total", "subscribers_count", "followers"),
+    "following_count": ("following_count", "followingCount", "follows_count", "numFollowing", "following"),
+    "posts_count": ("statuses_count", "posts_count", "postsCount", "numStoriesPublished"),
+}
+# A stock picture standing in for "no photo" (Mastodon's missing.png,
+# Gitee's no_portrait, GameJolt's avatar frames). Matched on host and path
+# only: a Gravatar URL names its fallback in the query.
+_PLACEHOLDER_PICTURE = re.compile(
+    r"(missing|default|placeholder|blank|anonymous|no[-_]?avatar|no[-_]?portrait|avatar-frame|/gravatar\.jpg|"
+    r"favicon|logo|/static/|/assets/images/|opengraph|og[-_]?image)", re.I)
 # In a page's embedded JSON (escaped slashes and all): one of those keys
 # and an image URL.
 _EMBEDDED_BANNER = re.compile(
@@ -159,11 +184,36 @@ def _first(obj: dict, keys: tuple[str, ...]) -> Any:
     return None
 
 
+def _first_image(obj: dict, keys: tuple[str, ...]) -> Optional[str]:
+    """The first of these keys that holds a picture: a key holding no URL
+    (an empty size map, a colour) doesn't hide a later one that does."""
+    for key in keys:
+        url = _image_url(obj.get(key))
+        if url:
+            return url
+    return None
+
+
 def _image_url(value: Any) -> Optional[str]:
     if isinstance(value, list):
         value = value[0] if value else None
     if isinstance(value, dict):
-        value = value.get("url") or value.get("contentUrl") or value.get("src")
+        named = value.get("url") or value.get("contentUrl") or value.get("src") or value.get("img_url")
+        if not named:
+            # Sizes as keys ({"90x90": ..., "32x32": ...}, {"150x150": ...}):
+            # the largest.
+            words = {"master": 9000, "original": 8000, "full": 7000, "xlarge": 6000, "large": 5000,
+                     "medium": 400, "small": 100, "tiny": 30, "thumb": 50}
+            sized = []
+            for k, v in value.items():
+                if not (isinstance(v, str) and v.startswith(("http://", "https://", "//"))):
+                    continue
+                m = re.search(r"\d+", str(k))
+                size = int(m.group()) if m else words.get(str(k).lower())
+                if size is not None:
+                    sized.append((size, v))
+            named = max(sized)[1] if sized else None
+        value = named
     if isinstance(value, str) and value.strip().lower().startswith(("http://", "https://", "//")):
         return value.strip()
     return None
@@ -203,11 +253,41 @@ def _unwrap(obj: Any) -> Any:
             continue
         if not isinstance(obj, dict):
             return obj
+        # Already the account (it has a name or a photo): its own "profile"
+        # or "data" field is a part of it, not a further envelope.
+        if any(obj.get(k) for k in _NAME_KEYS + _AVATAR_KEYS + ("username", "handle")):
+            return obj
         nested = next((obj[k] for k in _WRAPPER_KEYS if isinstance(obj.get(k), (dict, list)) and obj.get(k)), None)
         if nested is None:
             return obj
         obj = nested
     return obj
+
+
+def _placeholder(url: str) -> bool:
+    parts = urlsplit(url if "//" in url else "//" + url)
+    return bool(_PLACEHOLDER_PICTURE.search(f"{parts.netloc}{parts.path}"))
+
+
+def picture_from(body: str, pattern: str, username: str, fmt: Optional[str] = None) -> Optional[str]:
+    """A picture URL a site keeps somewhere the general reading doesn't look
+    (a size code to rebuild, XML, a nested key): its entry's regex, whose
+    first group is the URL, "{}" standing for the username. None when the
+    pattern finds nothing or the result is a stock picture."""
+    try:
+        m = re.search(pattern.replace("{}", re.escape(username)), body or "", re.S | re.I)
+    except re.error:
+        return None
+    if not m:
+        return None
+    url = m.group(1).replace("\\/", "/").replace("\\u0026", "&").replace("&amp;", "&").strip()
+    if fmt:
+        url = fmt.format(url)
+    if url.startswith("//"):
+        url = "https:" + url
+    if not url.startswith(("https://", "http://")) or _placeholder(url):
+        return None
+    return url
 
 
 def _banner_in_page(body: str) -> Optional[str]:
@@ -233,8 +313,17 @@ def _from_json(data: Any) -> dict[str, Any]:
     if isinstance(name, str):
         out["name"], out["name_source"] = _text(name, 80), "api"
     out["bio"] = _text(_first(obj, _BIO_KEYS))
-    out["avatar_url"] = _image_url(_first(obj, _AVATAR_KEYS))
-    out["banner_url"] = _image_url(_first(obj, _BANNER_KEYS))
+    out["avatar_url"] = _first_image(obj, _AVATAR_KEYS)
+    out["banner_url"] = _first_image(obj, _JSON_BANNER_KEYS)
+    created = _first(obj, _CREATED_KEYS)
+    if isinstance(created, (str, int, float)) and not isinstance(created, bool):
+        out["created_at"] = created
+    for name, keys in _COUNT_KEYS.items():
+        value = _first(obj, keys)
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
+            out[name] = int(value)
     out["location"] = _location(_first(obj, _LOCATION_KEYS))
     links: list[str] = []
     for key in _LINK_KEYS:
@@ -438,12 +527,15 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
     if links:
         profile["links"] = links
 
+    for key in ("avatar_url", "banner_url"):
+        if profile.get(key) and _placeholder(profile[key]):
+            profile.pop(key)
     if profile.get("banner_url"):
         banner = _absolute(profile["banner_url"], page_url)
         # An image has a path to it; a bare host ("https://mango.plurk.com/")
         # under a banner-ish key is a link, not a picture.
         path = urlsplit(banner).path if banner else ""
-        if (banner and len(path.strip("/")) >= 3 and not _NOT_A_PHOTO.search(banner)
+        if (banner and len(path.strip("/")) >= 3 and not _placeholder(banner)
                 and banner != profile.get("avatar_url")):
             profile["banner_url"] = banner
         else:
