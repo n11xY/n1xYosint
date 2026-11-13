@@ -159,6 +159,9 @@ def account_dates(findings: Iterable[Finding], now: Optional[datetime] = None) -
     best: dict[tuple[str, str], DatedAccount] = {}
     for f in findings:
         field = ACCOUNT_DATE_FIELDS.get(f.source)
+        if field is None and f.source.startswith("username_sites:") and (f.metadata or {}).get("created_at"):
+            # A site's profile API told us when the account was made.
+            field = ("created_at", "account")
         if field is None or f.status not in COUNTED:
             continue
         key, kind = field

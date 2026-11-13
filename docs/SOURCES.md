@@ -516,3 +516,32 @@ distinguishable from nonexistent ones).
 | Discourse Meta | Works, but one forum instance of a self-hosted product has little lookup value. |
 | Domain sources (crt.sh, RDAP) | Work, but the engine takes no domain input yet (no `--domain` option); worth adding together with that input. |
 
+
+## Profile photos and cover images (2026-11-13)
+
+A found account's photo, cover image, sign-up date and follower counts come
+from the page the check already read, and, where a site keeps them
+elsewhere, from two optional entry fields in `config/sites.json`:
+
+- `profile_api`: a public, keyless profile endpoint, asked only once the
+  account is found. Used for Mastodon (mastodon.social, mstdn.jp), Pixelfed,
+  Scratch, Chess.com, Keybase, Gitee, Wattpad, Pinterest (widget API),
+  Hugging Face, Dailymotion, Steam (community XML) and Bitbucket. Kick's
+  check now reads its channel API directly.
+- `avatar_pattern` / `banner_pattern` (with `avatar_format` /
+  `banner_format`): a regex for a picture the general reading can't see,
+  such as Pinterest's 60px photo rebuilt at 280px, Habbo's figure code drawn
+  as an image, Duolingo's sized photos, SoundCloud's `-large` photo at
+  500px plus its profile banner, Patreon's photo and campaign cover, Medium's
+  RSS channel image, Kick's photo and banner.
+
+API answers are also read for more key names (`pfp`, `img_avatar`,
+`avatar_720_url`, sized maps like `{"90x90": ...}` or `{"tiny", ..., "large"}`)
+and stop unwrapping at the account object. Stock pictures (Mastodon's
+`missing.png`, Gitee's `no_portrait`, default avatars) are dropped.
+
+Measured on every username site for three public accounts (Gargron,
+shroud, torvalds): found accounts with a photo went from 55 of 199 to 73 of
+199, with a cover image from 0 to 3. Most of the rest have no photo set, or
+keep it behind a page that needs JavaScript, a login, or (YouTube from the
+EU) a consent page; those aren't worked around.

@@ -71,6 +71,16 @@ reports found profiles only and stays silent otherwise, instead of adding a
 "couldn't tell" row to every search. "confirmed": true shows a found profile
 as CONFIRMED where the markers are strong enough to trust (the Instagram
 entry, whose markers are the profile header only a real account has).
+
+A found account's profile -- photo, cover image, sign-up date, follower
+counts -- is read from the page itself and can be filled in from where the
+site keeps it: "profile_api", a public, keyless profile endpoint asked only
+once the account is found (a Mastodon server's account lookup, Wattpad's
+user API, Steam's community XML), and "avatar_pattern" / "banner_pattern",
+a regex whose first group is the picture's URL ("{}" stands for the
+username), with "avatar_format" / "banner_format" to rebuild it (Pinterest's
+60px photo at 280px, Habbo's figure code as an image). Stock "no photo"
+pictures are never taken for the account's own.
 """
 from __future__ import annotations
 
@@ -595,6 +605,46 @@ class UsernameSitesPlugin(SourcePlugin):
         finally:
             self._inflight.pop(key, None)
 
+    async def _richer_profile(self, site: dict, request_source: str, value: str, resp,
+                              profile: Optional[dict]) -> Optional[dict]:
+        """Fill in the photo, cover image, sign-up date and counts from where
+        the site keeps them: its public profile API ("profile_api", asked
+        only once the account is found) and its picture patterns
+        ("avatar_pattern" / "banner_pattern", with "_format" to rebuild a
+        URL). What the API says about the account wins over a page's
+        guesses. Never fails the lookup."""
+        if not (site.get("profile_api") or site.get("avatar_pattern") or site.get("banner_pattern")):
+            return profile
+        profile = dict(profile or {})
+        bodies = [resp.text or ""]
+        try:
+            if site.get("profile_api"):
+                api_url = site["profile_api"].format(quote(value, safe=""))
+                api = await self.http.get(request_source, api_url, expected_statuses={404})
+                if api.error is None and api.status == 200 and api.text:
+                    bodies.insert(0, api.text)
+                    headers = getattr(api, "headers", None) or {}
+                    content_type = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
+                    from_api = profile_extract.extract(api.text, api_url, site["name"], value,
+                                                       content_type=content_type)
+                    for key, field in from_api.items():
+                        if key in ("avatar_url", "banner_url", "gravatar_hash", "created_at", "followers_count",
+                                   "following_count", "posts_count") or not profile.get(key):
+                            profile[key] = field
+            for kind in ("avatar", "banner"):
+                if not site.get(f"{kind}_pattern"):
+                    continue
+                # The API's answer first, then the page itself.
+                for body in bodies:
+                    picture = profile_extract.picture_from(body, site[f"{kind}_pattern"], value,
+                                                           site.get(f"{kind}_format"))
+                    if picture:
+                        profile[f"{kind}_url"] = picture
+                        break
+        except Exception as exc:  # noqa: BLE001 -- the profile is an extra
+            log.debug("profile details failed for %s: %s", site["name"], exc)
+        return profile or None
+
     def _result_cache(self, settings: SiteSettings):
         return getattr(self.http, "cache", None) if settings.cache_ttl is not None else None
 
@@ -684,6 +734,7 @@ class UsernameSitesPlugin(SourcePlugin):
             decoy_check = "disabled for this site"
 
         profile = _profile_of(resp, site, value, url)
+        profile = await self._richer_profile(site, request_source, value, resp, profile)
         expires_at = None
         # A failed decoy check means this site's signal can't be trusted
         # right now -- not something to keep.

@@ -404,3 +404,60 @@ def test_each_fallback_viewer_waits_in_its_own_queue():
     # it waits in the same queue.
     assert http.sources == ["username_sites:Example", "username_sites:Example@second.example",
                             "username_sites:Example@second.example"]
+
+
+class _ProfileApiHttp:
+    """The page says only "found"; the profile API and the page data carry
+    the pictures, the date and the counts."""
+
+    def __init__(self):
+        self.urls = []
+
+    async def get(self, source, url, headers=None, expected_statuses=None, **kwargs):
+        self.urls.append(url)
+        if "api.example" in url:
+            text = ('{"user": {"name": "Alice", "avatar": "https://cdn.example/a.jpg", "header":'
+                    ' "https://cdn.example/h.jpg", "created_at": "2015-04-01T00:00:00Z", "followers_count": 42}}')
+        else:
+            text = '<html><script>{"figure":"hr-1.hd-2"}</script></html>'
+        return SimpleNamespace(status=200, text=text, error=None, cached=False, evidence_path=None,
+                               url=url, headers={}, json=lambda: None)
+
+
+def test_a_found_account_is_filled_in_from_its_profile_api_and_patterns():
+    http = _ProfileApiHttp()
+    plugin = UsernameSitesPlugin(config={}, http=http)
+    plugin.sites = [{"name": "Example", "url": "https://example.org/{}", "check": "status", "confirmed": True,
+                     "profile_api": "https://api.example/users/{}",
+                     "banner_pattern": '"figure":"([^"]+)"',
+                     "banner_format": "https://img.example/figure?f={0}"}]
+    [finding] = asyncio.run(plugin.run(Identifier(value="alice", type=IdentifierType.USERNAME)))
+    meta = finding.metadata
+    assert meta["avatar_url"] == "https://cdn.example/a.jpg"
+    assert meta["created_at"] == "2015-04-01T00:00:00Z" and meta["followers_count"] == 42
+    # The site's own pattern wins over the API's header for the banner.
+    assert meta["banner_url"] == "https://img.example/figure?f=hr-1.hd-2"
+    assert any("api.example/users/alice" in u for u in http.urls)
+
+
+def test_stock_pictures_are_not_taken_for_the_accounts_own():
+    from osintrecon.core.profile_extract import extract, picture_from
+    api = ('{"avatar": "https://mstdn.jp/avatars/original/missing.png",'
+           ' "header": "https://mstdn.jp/headers/original/missing.png", "username": "a"}')
+    got = extract(api, "https://mstdn.jp/api/v1/accounts/lookup?acct=a", "mstdn.jp", "a", content_type="application/json")
+    assert "avatar_url" not in got and "banner_url" not in got
+    assert picture_from('"avatar_url":"https://gitee.com/assets/no_portrait.png"', '"avatar_url":"([^"]+)"', "a") is None
+    # A Gravatar names its fallback in the query; the picture itself is the account's.
+    gravatar = '{"img_avatar": "https://secure.gravatar.com/avatar/abc?d=https%3A%2F%2Fs.gjcdn.net%2Fno-avatar-3.png", "username": "a"}'
+    assert extract(gravatar, "https://gamejolt.com/x", "GameJolt", "a", content_type="application/json")["avatar_url"].startswith(
+        "https://secure.gravatar.com/avatar/abc")
+
+
+def test_nested_account_fields_and_named_sizes():
+    from osintrecon.core.profile_extract import extract
+    # Farcaster: the account sits in result.user; its own "profile" field is part of it.
+    far = '{"result": {"user": {"username": "a", "displayName": "Al", "pfp": {"url": "https://i.imgur.com/x.jpg"}, "profile": {"bio": {"text": "hi"}}}}}'
+    assert extract(far, "https://api.farcaster.xyz/x", "Farcaster", "a", content_type="application/json")["avatar_url"] == "https://i.imgur.com/x.jpg"
+    # Minds: sizes by name, the largest kept.
+    minds = '{"channel": {"username": "a", "avatar_url": {"tiny": "https://m/i/tiny", "large": "https://m/i/large", "medium": "https://m/i/medium"}}}'
+    assert extract(minds, "https://www.minds.com/x", "Minds", "a", content_type="application/json")["avatar_url"] == "https://m/i/large"

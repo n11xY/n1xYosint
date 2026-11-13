@@ -40,7 +40,7 @@ def test_account_dates_keeps_only_trusted_dated_accounts_oldest_first():
         finding("lichess", MatchStatus.PROBABLE, created_at=1546300800000),   # 2019-01-01
         finding("chess_com", MatchStatus.UNCERTAIN, joined=1262304000),        # uncertain: skipped
         finding("hackernews", MatchStatus.ERROR, created=1262304000),          # error: skipped
-        finding("username_sites:Reddit", created_at="2010-01-01T00:00:00Z"),   # no known date field
+        finding("username_sites:Reddit", created_at="2010-01-01T00:00:00Z"),   # a site's profile API date
         finding("pgp_keys", identifier=Identifier(value="a@x.org", type=IdentifierType.EMAIL),
                 created_at="2015-05-05T00:00:00Z"),
         finding("bluesky", created_at="not a date"),
@@ -49,11 +49,12 @@ def test_account_dates_keeps_only_trusted_dated_accounts_oldest_first():
     dated = account_dates(findings, NOW)
 
     assert [(d.source, d.created.year, d.kind, d.status) for d in dated] == [
+        ("username_sites:Reddit", 2010, "account", "confirmed"),
         ("github", 2011, "account", "confirmed"),
         ("pgp_keys", 2015, "key", "confirmed"),
         ("lichess", 2019, "account", "probable"),
     ]
-    assert dated[0].url == "https://github.example/alice"
+    assert dated[1].url == "https://github.example/alice"
 
 
 def test_account_dates_keeps_the_earliest_per_account():
