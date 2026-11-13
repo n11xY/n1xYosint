@@ -461,3 +461,24 @@ def test_nested_account_fields_and_named_sizes():
     # Minds: sizes by name, the largest kept.
     minds = '{"channel": {"username": "a", "avatar_url": {"tiny": "https://m/i/tiny", "large": "https://m/i/large", "medium": "https://m/i/medium"}}}'
     assert extract(minds, "https://www.minds.com/x", "Minds", "a", content_type="application/json")["avatar_url"] == "https://m/i/large"
+
+
+def test_facts_are_read_from_the_accounts_own_object_only():
+    from osintrecon.plugins.sources.username_sites import _object_around
+    page = ('{"boards": [{"name": "Board", "created_at": "Mon, 05 Dec 2016 19:34:54 +0000"}], "user": {'
+            '"following_count": 5, "bio": "a {brace} in text", "created_at": "Mon, 05 Mar 2012 16:37:07 +0000",'
+            ' "follower_count": 7}}')
+    obj = _object_around(page, r'"following_count":\d+|"following_count": \d+')
+    assert obj.startswith('{"following_count": 5') and "Board" not in obj and obj.endswith('"follower_count": 7}')
+
+
+def test_rfc_2822_dates_reach_the_timeline():
+    from osintrecon.core.timeline import parse_date
+    assert parse_date("Mon, 05 Mar 2012 16:37:07 +0000").year == 2012
+
+
+def test_a_zero_count_is_kept():
+    from osintrecon.core.profile_extract import extract
+    got = extract('{"username": "a", "follower_count": 0}', "https://api.example/a", "Example", "a",
+                  content_type="application/json")
+    assert got["followers_count"] == 0

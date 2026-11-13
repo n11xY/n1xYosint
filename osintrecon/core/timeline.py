@@ -57,7 +57,7 @@ COUNTED = (MatchStatus.CONFIRMED, MatchStatus.PROBABLE)
 # Nothing in this database predates the web; anything earlier is a parse
 # error or a placeholder value (0, 1970-01-01), not a real sign-up.
 _EARLIEST = datetime(1990, 1, 1, tzinfo=timezone.utc)
-_TEXT_FORMATS = ("%b %d, %Y", "%B %d, %Y", "%a %b %d %H:%M:%S %z %Y")
+_TEXT_FORMATS = ("%b %d, %Y", "%B %d, %Y", "%a %b %d %H:%M:%S %z %Y", "%a, %d %b %Y %H:%M:%S %z")
 
 
 # Platform names as plugins and the site database spell them, folded to

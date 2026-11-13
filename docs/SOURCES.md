@@ -535,6 +535,15 @@ elsewhere, from two optional entry fields in `config/sites.json`:
   500px plus its profile banner, Patreon's photo and campaign cover, Medium's
   RSS channel image, Kick's photo and banner.
 
+- `fact_patterns` (with an optional `fact_scope`): counts and the sign-up date
+  from a page's data, read only inside the JSON object around the scope's
+  first match (the account's own object, not a board's). Pinterest uses it
+  for following and the sign-up date; with its widget API's followers and
+  the profile cover (736px), a Pinterest card now has all four. Pinterest's
+  monthly views are loaded only for signed-in viewers (its profile resource
+  answers 403 anonymously), so they aren't shown. In every pattern
+  `{username}` stands for the username.
+
 API answers are also read for more key names (`pfp`, `img_avatar`,
 `avatar_720_url`, sized maps like `{"90x90": ...}` or `{"tiny", ..., "large"}`)
 and stop unwrapping at the account object. Stock pictures (Mastodon's

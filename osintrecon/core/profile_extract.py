@@ -272,10 +272,10 @@ def _placeholder(url: str) -> bool:
 def picture_from(body: str, pattern: str, username: str, fmt: Optional[str] = None) -> Optional[str]:
     """A picture URL a site keeps somewhere the general reading doesn't look
     (a size code to rebuild, XML, a nested key): its entry's regex, whose
-    first group is the URL, "{}" standing for the username. None when the
+    first group is the URL, "{username}" standing for the username. None when the
     pattern finds nothing or the result is a stock picture."""
     try:
-        m = re.search(pattern.replace("{}", re.escape(username)), body or "", re.S | re.I)
+        m = re.search(pattern.replace("{username}", re.escape(username)), body or "", re.S | re.I)
     except re.error:
         return None
     if not m:
@@ -460,7 +460,8 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
         if data is not None:
             got = _from_json(data)
             claimed.extend(got.pop("claimed_links", []))
-            profile.update({k: v for k, v in got.items() if v})
+            # A count of 0 is a fact too (nobody follows yet), not a gap.
+            profile.update({k: v for k, v in got.items() if v or (type(v) is int)})
     else:
         page = _Page(collect_anchors=link_hub)
         try:
