@@ -499,3 +499,18 @@ def test_picture_urls_with_escaped_slashes_are_rebuilt():
     from osintrecon.core.profile_extract import picture_from
     page = '"avatarLarger":"https:\u002F\u002Fp16.tiktokcdn.com\u002Fa.jpeg?x=1\u0026y=2"'
     assert picture_from(page, '"avatarLarger":"([^"]+)"', "a") == "https://p16.tiktokcdn.com/a.jpeg?x=1&y=2"
+
+
+def test_default_site_settings_turn_off_dead_sites_and_pace_rate_limited_ones():
+    from osintrecon.core.config import DEFAULT_CONFIG
+    from osintrecon.plugins.sources.username_sites import SiteSettings
+
+    settings = DEFAULT_CONFIG["sources"]["username_sites"]["site_settings"]
+    # virgool.io stopped resolving; velog.io stopped answering
+    assert SiteSettings.from_config(settings["Virgool"]).enabled is False
+    assert SiteSettings.from_config(settings["Velog"]).enabled is False
+    # both 429 a quick run of requests: one at a time, two seconds apart
+    for site in ("Fansly", "Linktree"):
+        parsed = SiteSettings.from_config(settings[site])
+        assert parsed.enabled is True
+        assert parsed.policy.max_concurrency == 1 and parsed.policy.min_interval == 2

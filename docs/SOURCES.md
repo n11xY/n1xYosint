@@ -413,6 +413,13 @@ Also in this batch:
   request to velog.io gets a response that never finishes, for profile, RSS and
   about pages alike, from home and from the server. Set it back to true once it
   answers again.
+- **Turned off: Virgool** (`site_settings.Virgool.enabled: false`). Since
+  2026-11-14 `virgool.io` doesn't resolve at all (NXDOMAIN at the registry, from
+  home and from the server). Set it back to true if the domain returns.
+- **Paced: Fansly and Linktree** (`max_concurrency: 1`,
+  `minimum_request_interval: 2`, `cooldown_duration: 300`). Both answered the
+  rapid requests of one seven-username search with HTTP 429; one request at a
+  time, two seconds apart, keeps them answering.
 - **Removed: TryHackMe**, whose profile URL now serves the same app shell
   for every name. **Observable** moved to `api.observablehq.com/user/@{}`
   for the same reason.
