@@ -98,6 +98,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
                 # alike, from home and from the server). Off until it does;
                 # set enabled: true in config.yaml to check it again.
                 "Velog": {"enabled": False},
+                # virgool.io no longer resolves (NXDOMAIN at the registry,
+                # from home and from the server, 2026-11-14). Off until the
+                # domain is back.
+                "Virgool": {"enabled": False},
+                # Both answer a quick run of requests with 429 (seven
+                # usernames in one search were enough): one request at a
+                # time, two seconds apart, across runs.
+                "Fansly": {"max_concurrency": 1, "minimum_request_interval": 2, "cooldown_duration": 300},
+                "Linktree": {"max_concurrency": 1, "minimum_request_interval": 2, "cooldown_duration": 300},
             },
         },
     },
