@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 from typing import ClassVar, Optional
 from urllib.parse import quote
 
+from osintrecon.core import banner_discovery
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
@@ -169,7 +170,10 @@ class TwitchAPIPlugin(SourcePlugin):
                 "created_at": user.get("created_at"),
                 "profile_image_url": user.get("profile_image_url"),
                 "view_count": user.get("view_count"),
-                "banner_url": user.get("offline_image_url") or None,
+                # Helix has no profile banner; the offline screen is the
+                # channel's own wide image
+                **banner_discovery.api_banner(user.get("offline_image_url"), avatar_url=user.get("profile_image_url"),
+                                              signal="offline_image_url"),
             },
             evidence_path=resp.evidence_path,
         )]

@@ -75,7 +75,9 @@ def test_boilerplate_description_and_logo_are_dropped():
     page = ('<meta property="og:title" content="alice - Example">'
             '<meta property="og:description" content="Join Example today and see posts from alice">'
             '<meta property="og:image" content="https://example.com/logo.png">')
-    assert profile_extract.extract(page, "https://example.com/alice", "Example", "alice") == {}
+    got = profile_extract.extract(page, "https://example.com/alice", "Example", "alice")
+    # Nothing about the owner; only the record of the logo judged and rejected as a cover.
+    assert set(got) == {"banner_diagnostics"} and got["banner_diagnostics"][0]["rejected"] == 1
 
 
 def test_json_api_answers_and_gravatar_hash():

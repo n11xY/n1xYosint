@@ -14,6 +14,9 @@ Sources, most reliable first:
   * link hubs (Linktree, Carrd, ...): every outbound button is the owner's;
   * "ig: alice" / "twitter @alice" written in a bio.
 
+The cover image is chosen by core/banner_discovery.py from every place
+that could hold one, with the reasons kept in banner_diagnostics.
+
 The result goes into the finding's metadata under the keys the dedicated
 plugins already use (name, bio, location, avatar_url, links), plus
 linked_accounts for links that resolve to an account on a known platform.
@@ -27,7 +30,7 @@ from html.parser import HTMLParser
 from typing import Any, Optional
 from urllib.parse import urljoin, urlsplit
 
-from osintrecon.core import platform_urls
+from osintrecon.core import banner_discovery, platform_urls
 
 MAX_BODY = 600_000
 MAX_BIO = 400
@@ -91,16 +94,6 @@ _AVATAR_KEYS = ("avatar_url", "avatarUrl", "avatar", "profile_image_url_https", 
                 "avatar_static", "icon_url", "img_avatar", "avatar_720_url", "gravatar_url", "photo_url",
                 "pfp", "profile_picture", "images")
 _LOCATION_KEYS = ("location", "city", "country", "hometown", "loc")
-# The profile's cover image. Only names that mean "this account's banner":
-# a bare "banner" or "cover" key on a page is as often the site's own.
-_BANNER_KEYS = ("banner_url", "bannerUrl", "bannerImage", "banner_image", "banner_img", "profile_banner_url",
-                "profileBanner", "header_static", "header_image", "headerImage", "cover_photo", "coverPhoto",
-                "cover_image_url", "coverImageUrl", "profile_cover", "visual_url")
-# An API answer is about the account, so there plain names for its cover
-# image are safe too (Mastodon's "header", Wattpad's "backgroundUrl").
-_JSON_BANNER_KEYS = _BANNER_KEYS + ("header", "banner", "cover", "coverImage", "cover_image", "cover_url",
-                                    "coverUrl", "cover_photo_url", "backgroundUrl", "background_url",
-                                    "background_image", "header_media_item", "cover_photo")
 # What an API says about the account besides who it is: when it was made
 # and how many follow it. Stored under one name each, whatever the source
 # called them.
@@ -119,14 +112,6 @@ _COUNT_KEYS = {
 _PLACEHOLDER_PICTURE = re.compile(
     r"(missing|default|placeholder|blank|anonymous|no[-_]?avatar|no[-_]?portrait|avatar-frame|/gravatar\.jpg|"
     r"favicon|logo|/static/|/assets/images/|opengraph|og[-_]?image)", re.I)
-# In a page's embedded JSON (escaped slashes and all): one of those keys
-# and an image URL.
-_EMBEDDED_BANNER = re.compile(
-    r'"(?:' + "|".join(_BANNER_KEYS) + r')"\s*:\s*"(https?:(?:\\?/){2}[^"\s]{8,600})"')
-# YouTube keeps the channel banner in ytInitialData: the sources run from
-# small to large, so the last one is the full size.
-_YOUTUBE_BANNER = re.compile(r'"imageBannerViewModel":\{"image":\{"sources":\[(.*?)\]', re.S)
-_YOUTUBE_SOURCE = re.compile(r'"url":"(https://yt3\.googleusercontent\.com/[^"]+)"')
 _LINK_KEYS = ("website", "url", "blog", "homepage", "home_page", "site", "web", "links", "website_url",
               "external_url", "fields", "social", "socials", "social_links", "twitter_username")
 
@@ -139,10 +124,12 @@ class _Page(HTMLParser):
         self.rel_me: list[str] = []
         self.anchors: list[str] = []
         self.jsonld: list[str] = []
+        self.dom = banner_discovery.DomCollector()
         self._buf: Optional[list[str]] = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
         a = {k.lower(): (v or "") for k, v in attrs}
+        self.dom.start(tag, a)
         if tag == "meta":
             key = (a.get("property") or a.get("name") or a.get("itemprop") or "").lower()
             if key and a.get("content") and key not in self.meta:
@@ -159,6 +146,7 @@ class _Page(HTMLParser):
             self._buf = []
 
     def handle_endtag(self, tag: str) -> None:
+        self.dom.end(tag)
         if tag == "script" and self._buf is not None:
             self.jsonld.append("".join(self._buf))
             self._buf = None
@@ -291,20 +279,6 @@ def picture_from(body: str, pattern: str, username: str, fmt: Optional[str] = No
     return url
 
 
-def _banner_in_page(body: str) -> Optional[str]:
-    """The account's cover image from a page's embedded JSON, if it names
-    one: YouTube's channel banner, or a key that only means a banner."""
-    yt = _YOUTUBE_BANNER.search(body)
-    if yt:
-        sources = _YOUTUBE_SOURCE.findall(yt.group(1))
-        if sources:
-            return sources[-1].replace("\\u0026", "&")
-    m = _EMBEDDED_BANNER.search(body)
-    if m:
-        return m.group(1).replace("\\/", "/").replace("\\u0026", "&")
-    return None
-
-
 def _from_json(data: Any) -> dict[str, Any]:
     obj = _unwrap(data)
     if not isinstance(obj, dict):
@@ -315,7 +289,6 @@ def _from_json(data: Any) -> dict[str, Any]:
         out["name"], out["name_source"] = _text(name, 80), "api"
     out["bio"] = _text(_first(obj, _BIO_KEYS))
     out["avatar_url"] = _first_image(obj, _AVATAR_KEYS)
-    out["banner_url"] = _first_image(obj, _JSON_BANNER_KEYS)
     created = _first(obj, _CREATED_KEYS)
     if isinstance(created, (str, int, float)) and not isinstance(created, bool):
         out["created_at"] = created
@@ -452,6 +425,8 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
     profile: dict[str, Any] = {}
     claimed: list[str] = []
     stripped = body.lstrip()
+    json_data: Any = None
+    page: Optional[_Page] = None
 
     if "json" in content_type.lower() or stripped[:1] in ("{", "["):
         try:
@@ -459,6 +434,7 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
         except ValueError:
             data = None
         if data is not None:
+            json_data = data
             got = _from_json(data)
             claimed.extend(got.pop("claimed_links", []))
             # A count of 0 is a fact too (nobody follows yet), not a gap.
@@ -499,9 +475,6 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
             image = meta.get("og:image") or meta.get("twitter:image") or meta.get("twitter:image:src")
             if image and not _NOT_A_PHOTO.search(image):
                 profile["avatar_url"] = image
-        banner = _banner_in_page(body)
-        if banner:
-            profile["banner_url"] = banner
         profile = {k: v for k, v in profile.items() if v}
     if profile.get("name") and profile["name"].lstrip("@").strip().lower() == username.lower():
         # The username again, not a display name.
@@ -529,24 +502,29 @@ def extract(body: str, page_url: str, site_name: str, username: str, *, link_hub
     if links:
         profile["links"] = links
 
-    for key in ("avatar_url", "banner_url"):
-        if profile.get(key) and _placeholder(profile[key]):
-            profile.pop(key)
-    if profile.get("banner_url"):
-        banner = _absolute(profile["banner_url"], page_url)
-        # An image has a path to it; a bare host ("https://mango.plurk.com/")
-        # under a banner-ish key is a link, not a picture.
-        path = urlsplit(banner).path if banner else ""
-        if (banner and len(path.strip("/")) >= 3 and not _placeholder(banner)
-                and banner != profile.get("avatar_url")):
-            profile["banner_url"] = banner
-        else:
-            profile.pop("banner_url")
+    if profile.get("avatar_url") and _placeholder(profile["avatar_url"]):
+        profile.pop("avatar_url")
     if profile.get("avatar_url"):
         profile["avatar_url"] = _absolute(profile["avatar_url"], page_url) or profile["avatar_url"]
         m = _GRAVATAR.search(profile["avatar_url"])
         if m:
             profile["gravatar_hash"] = m.group(1).lower()
+
+    # The cover image: every candidate the answer holds, scored
+    # (core/banner_discovery.py). An API answer's account object counts as
+    # the account's own; a page adds its embedded state, cover containers
+    # and meta tags.
+    account = _unwrap(json_data) if json_data is not None else None
+    found = banner_discovery.discover(
+        page_url=page_url, username=username, avatar_url=profile.get("avatar_url"),
+        api_object=account if isinstance(account, dict) else None, json_data=json_data,
+        body=body if page is not None else "", dom=page.dom if page is not None else None,
+        meta=page.meta if page is not None else None)
+    profile.pop("banner_url", None)
+    # The diagnostics are kept whenever there was something to judge or a
+    # profile to attach them to; a page with neither stays an empty profile.
+    if found.banner_url or found.candidates or profile:
+        profile.update(found.fields("page"))
 
     # The site's own accounts, linked from every page's header or footer
     # ("x.com/opencollect" on Open Collective): not the profile owner's.

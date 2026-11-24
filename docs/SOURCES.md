@@ -561,3 +561,16 @@ shroud, torvalds): found accounts with a photo went from 55 of 199 to 73 of
 199, with a cover image from 0 to 3. Most of the rest have no photo set, or
 keep it behind a page that needs JavaScript, a login, or (YouTube from the
 EU) a consent page; those aren't worked around.
+
+## Cover images: one scored search (2026-11-24)
+
+The cover image is now chosen by `osintrecon/core/banner_discovery.py`
+instead of "the first banner-ish key": API fields, the page's embedded state
+(walked recursively, vague keys only inside the account's own object), cover
+containers in the HTML and their CSS backgrounds all hand in candidates,
+which are scored and checked for placeholders, the avatar again, the site's
+own assets and folder-or-page "URLs". Each profile carries
+`banner_diagnostics` saying what was tried and why nothing was taken.
+Misskey.io now reads its profile page as `profile_api` (its check is
+webfinger). Details, the scores and a per-platform coverage table:
+[BANNERS.md](BANNERS.md).

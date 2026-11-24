@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from osintrecon.core import banner_discovery
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
@@ -76,7 +77,8 @@ class AniListPlugin(SourcePlugin):
                 "anime_count": (stats.get("anime") or {}).get("count"),
                 "manga_count": (stats.get("manga") or {}).get("count"),
                 "avatar": (user.get("avatar") or {}).get("large"),
-                "banner_url": user.get("bannerImage"),
+                **banner_discovery.api_banner(user.get("bannerImage"), avatar_url=(user.get("avatar") or {}).get("large"),
+                                              signal="bannerImage"),
             },
             evidence_path=resp.evidence_path,
         )]

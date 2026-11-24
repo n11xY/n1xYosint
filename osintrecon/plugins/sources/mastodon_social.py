@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from typing import ClassVar
 
+from osintrecon.core import banner_discovery
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
@@ -78,8 +79,8 @@ class MastodonSocialPlugin(SourcePlugin):
                 "bot": data.get("bot"),
                 "avatar_url": data.get("avatar"),
                 # the profile's header image; Mastodon serves a stock "missing.png"
-                # when none was set, which is not the account's
-                "banner_url": None if "missing" in (data.get("header") or "missing") else data.get("header"),
+                # when none was set, which banner_discovery rejects as a placeholder
+                **banner_discovery.api_banner(data.get("header"), avatar_url=data.get("avatar"), signal="header"),
             },
             discovered_identifiers=discovered,
             evidence_path=resp.evidence_path,
