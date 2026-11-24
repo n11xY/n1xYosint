@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from osintrecon.core import banner_discovery
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
 
@@ -63,7 +64,7 @@ class BlueskyPlugin(SourcePlugin):
                 "created_at": data.get("createdAt"),
                 "avatar_url": data.get("avatar"),
                 # the profile's cover image, shown faded behind the result card's header
-                "banner_url": data.get("banner"),
+                **banner_discovery.api_banner(data.get("banner"), avatar_url=data.get("avatar"), signal="banner"),
             },
             evidence_path=resp.evidence_path,
         )]

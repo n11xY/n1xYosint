@@ -133,7 +133,7 @@
   {"name": "Cnblogs", "category": "social", "url": "https://www.cnblogs.com/{}/", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "omg.lol", "category": "social", "url": "https://api.omg.lol/address/{}/info", "profile_url": "https://{}.omg.lol", "check": "status", "found_status": 200, "not_found_status": 404, "lowercase": true},
   {"name": "Boosty", "category": "social", "url": "https://api.boosty.to/v1/blog/{}", "profile_url": "https://boosty.to/{}", "check": "status", "found_status": 200, "not_found_status": 404},
-  {"name": "Misskey.io", "category": "social", "url": "https://misskey.io/.well-known/webfinger?resource=acct:{}@misskey.io", "profile_url": "https://misskey.io/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
+  {"name": "Misskey.io", "category": "social", "url": "https://misskey.io/.well-known/webfinger?resource=acct:{}@misskey.io", "profile_url": "https://misskey.io/@{}", "profile_api": "https://misskey.io/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Virgool", "category": "social", "url": "https://virgool.io/@{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Wykop", "category": "social", "url": "https://wykop.pl/ludzie/{}", "check": "status", "found_status": 200, "not_found_status": 404},
   {"name": "Postype", "category": "social", "url": "https://www.postype.com/@{}", "check": "status", "found_status": 200, "not_found_status": 404},

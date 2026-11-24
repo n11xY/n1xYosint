@@ -37,6 +37,7 @@ import re
 from typing import Any, ClassVar, Optional
 from urllib.parse import parse_qs, quote, urlsplit
 
+from osintrecon.core import banner_discovery
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
 from osintrecon.plugins.base import SourcePlugin
@@ -138,7 +139,8 @@ class YouTubeAPIPlugin(SourcePlugin):
                 "display_name": snippet.get("title"),
                 "avatar_url": avatar,
                 # the banner URL comes without a size; =w1060 asks for a card-sized one
-                "banner_url": f"{banner}=w1060" if isinstance(banner, str) and banner.startswith("https://") else None,
+                **banner_discovery.api_banner(f"{banner}=w1060" if isinstance(banner, str) and banner.startswith("https://")
+                                              else None, avatar_url=avatar, signal="bannerExternalUrl"),
                 "description": snippet.get("description"),
                 "published_at": snippet.get("publishedAt"),
                 "country": snippet.get("country"),
@@ -223,7 +225,8 @@ class YouTubeAPIPlugin(SourcePlugin):
                 "display_name": got.get("display_name"),
                 "avatar_url": _youtube_image(got.get("avatar"), "s240"),
                 # a card-sized banner rather than the 2560px original
-                "banner_url": _youtube_image(got.get("banner"), "w1060"),
+                **banner_discovery.api_banner(_youtube_image(got.get("banner"), "w1060"),
+                                              avatar_url=_youtube_image(got.get("avatar"), "s240"), signal="banner"),
                 "subscriber_count": subscribers if isinstance(subscribers, int) else None,
                 "description": (got.get("description") or "")[:500] or None,
                 "data_origin": f"third_party ({urlsplit(got['via']).hostname})",

@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
+from osintrecon.core import banner_discovery
 from osintrecon.core.account_evidence import analyze as analyze_evidence, gravatar_email_matches
 from osintrecon.core.avatar_correlation import find_avatar_matches
 from osintrecon.core.cache import ResponseCache
@@ -147,6 +148,10 @@ class Engine:
                 ident = Identifier(value=email, type=IdentifierType.EMAIL)
                 if ident not in finding.discovered_identifiers:
                     finding.discovered_identifiers.append(ident)
+
+            # A cover image two different accounts on one site both got is
+            # the site's own (core/banner_discovery.py).
+            banner_discovery.drop_shared_banners(all_findings)
 
             username_rarity = self._username_rarity(plugins, visited, all_findings)
 

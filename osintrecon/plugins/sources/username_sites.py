@@ -99,7 +99,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, ClassVar, Optional
 from urllib.parse import quote, urlsplit
 
-from osintrecon.core import platform_urls, profile_extract
+from osintrecon.core import banner_discovery, platform_urls, profile_extract
 from osintrecon.core.http_client import SourcePolicy
 from osintrecon.core.logging_setup import get_logger
 from osintrecon.core.models import Finding, Identifier, IdentifierType, MatchStatus
@@ -660,20 +660,36 @@ class UsernameSitesPlugin(SourcePlugin):
                     content_type = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
                     from_api = profile_extract.extract(api.text, api_url, site["name"], value,
                                                        content_type=content_type)
+                    # The cover: the API's reading replaces the page's only
+                    # when it found one; both stages stay in the diagnostics.
+                    api_banner = {k: from_api.pop(k) for k in (*banner_discovery.BANNER_FIELDS, "banner_diagnostics")
+                                  if k in from_api}
                     for key, field in from_api.items():
-                        if key in ("avatar_url", "banner_url", "gravatar_hash", "created_at", "followers_count",
+                        if key in ("avatar_url", "gravatar_hash", "created_at", "followers_count",
                                    "following_count", "posts_count") or not profile.get(key):
                             profile[key] = field
+                    for stage in api_banner.get("banner_diagnostics") or []:
+                        stage["stage"] = "profile_api"
+                    banner_discovery.merge(profile, api_banner)
             for kind in ("avatar", "banner"):
                 if not site.get(f"{kind}_pattern"):
                     continue
                 # The API's answer first, then the page itself.
+                picture = None
                 for body in bodies:
                     picture = profile_extract.picture_from(body, site[f"{kind}_pattern"], value,
                                                            site.get(f"{kind}_format"))
                     if picture:
-                        profile[f"{kind}_url"] = picture
                         break
+                if kind == "avatar":
+                    if picture:
+                        profile["avatar_url"] = picture
+                else:
+                    # The site's own pattern is its most specific source, but
+                    # still can't be a stock picture or the avatar again.
+                    found = banner_discovery.from_pattern(picture, page_url=getattr(resp, "url", "") or "",
+                                                          avatar_url=profile.get("avatar_url"))
+                    banner_discovery.merge(profile, found.fields("site_pattern"))
             # Counts and the sign-up date from where the site keeps them
             # ("fact_patterns": {"following_count": [regex, ...], "created_at":
             # [...]}): the first pattern that matches, "{username}" the username.
